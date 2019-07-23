@@ -85,3 +85,33 @@ pub async fn test() {
     s.calls().await;
     s.calls_mut().await;
 }
+
+pub async fn test_object_safe_without_default() {
+    #[async_trait]
+    trait ObjectSafe {
+        async fn f(&self);
+    }
+
+    #[async_trait]
+    impl ObjectSafe for Struct {
+        async fn f(&self) {}
+    }
+
+    let object = &Struct as &dyn ObjectSafe;
+    object.f().await;
+}
+
+pub async fn test_object_safe_with_default() {
+    #[async_trait]
+    trait ObjectSafe: Sync {
+        async fn f(&self) {}
+    }
+
+    #[async_trait]
+    impl ObjectSafe for Struct {
+        async fn f(&self) {}
+    }
+
+    let object = &Struct as &dyn ObjectSafe;
+    object.f().await;
+}
