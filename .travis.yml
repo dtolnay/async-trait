@@ -5,3 +5,8 @@ rust:
 
 script:
   - cargo test
+
+matrix:
+  include:
+    - rust: stable
+      script: cargo check
