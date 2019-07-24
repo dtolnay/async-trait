@@ -2,6 +2,9 @@
 
 use async_trait::async_trait;
 
+// Renaming to avoid masking missing absolute paths in generated code.
+use std::future::Future as StdFuture;
+
 #[async_trait]
 trait Trait {
     type Assoc;
@@ -114,4 +117,17 @@ pub async fn test_object_safe_with_default() {
 
     let object = &Struct as &dyn ObjectSafe;
     object.f().await;
+}
+
+// https://github.com/dtolnay/async-trait/issues/2
+#[async_trait]
+pub trait Issue2: StdFuture {
+    async fn flatten(self) -> <<Self as StdFuture>::Output as StdFuture>::Output
+    where
+        Self::Output: StdFuture + Send,
+        Self: Sized,
+    {
+        let nested_future = self.await;
+        nested_future.await
+    }
 }
