@@ -123,7 +123,7 @@ mod issue2 {
 
     #[async_trait]
     pub trait Issue2: Future {
-        async fn flatten(self) -> <<Self as Future>::Output as Future>::Output
+        async fn flatten(self) -> <Self::Output as Future>::Output
         where
             Self::Output: Future + Send,
             Self: Sized,
