@@ -282,6 +282,13 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
         _ => {}
     }
 
+    if let Some(where_clause) = &mut standalone.decl.generics.where_clause {
+        // Work around an input bound like `where Self::Output: Send` expanding
+        // to `where <AsyncTrait>::Output: Send` which is illegal syntax because
+        // `where<T>` is reserved for future use... :(
+        where_clause.predicates.insert(0, parse_quote!((): Sized));
+    }
+
     let mut replace = match context {
         Context::Trait { .. } => ReplaceReceiver::with(parse_quote!(AsyncTrait)),
         Context::Impl { receiver, as_trait } => {
