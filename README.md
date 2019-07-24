@@ -127,46 +127,6 @@ impl Advertisement for AutoplayingVideo {
 
 <br>
 
-## Elided lifetimes
-
-Be aware that async fn syntax does not allow lifetime elision outside of `&` and
-`&mut` references. (This is true even when not using #\[async_trait\].)
-Lifetimes must be named or marked by the placeholder `'_`.
-
-Fortunately the compiler is able to diagnose missing lifetimes with a good error
-message.
-
-```rust
-type Elided<'a> = &'a usize;
-
-#[async_trait]
-trait Test {
-    async fn test(not_okay: Elided, okay: &usize) {}
-}
-```
-
-```console
-error[E0726]: implicit elided lifetime not allowed here
- --> src/main.rs:9:29
-  |
-9 |     async fn test(not_okay: Elided, okay: &usize) {}
-  |                             ^^^^^^- help: indicate the anonymous lifetime: `<'_>`
-```
-
-The fix is to name the lifetime or use `'_`.
-
-```rust
-#[async_trait]
-trait Test {
-    // either
-    async fn test<'e>(elided: Elided<'e>) {}
-    // or
-    async fn test(elided: Elided<'_>) {}
-}
-```
-
-<br>
-
 ## Dyn traits
 
 Traits with async methods can be used as trait objects as long as they meet the

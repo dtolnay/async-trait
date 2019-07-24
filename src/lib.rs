@@ -137,59 +137,6 @@
 //!
 //! <br><br>
 //!
-//! # Elided lifetimes
-//!
-//! Be aware that async fn syntax does not allow lifetime elision outside of `&`
-//! and `&mut` references. (This is true even when not using #\[async_trait\].)
-//! Lifetimes must be named or marked by the placeholder `'_`.
-//!
-//! Fortunately the compiler is able to diagnose missing lifetimes with a good
-//! error message.
-//!
-//! ```compile_fail
-//! # #![feature(async_await)]
-//! #
-//! # use async_trait::async_trait;
-//! #
-//! type Elided<'a> = &'a usize;
-//!
-//! #[async_trait]
-//! trait Test {
-//!     async fn test(not_okay: Elided, okay: &usize) {}
-//! }
-//! ```
-//!
-//! ```text
-//! error[E0726]: implicit elided lifetime not allowed here
-//!  --> src/main.rs:9:29
-//!   |
-//! 9 |     async fn test(not_okay: Elided, okay: &usize) {}
-//!   |                             ^^^^^^- help: indicate the anonymous lifetime: `<'_>`
-//! ```
-//!
-//! The fix is to name the lifetime or use `'_`.
-//!
-//! ```
-//! # #![feature(async_await)]
-//! #
-//! # use async_trait::async_trait;
-//! #
-//! # type Elided<'a> = &'a usize;
-//! #
-//! #[async_trait]
-//! trait Test {
-//!     // either
-//!     async fn test<'e>(elided: Elided<'e>) {}
-//! # }
-//! # #[async_trait]
-//! # trait Test2 {
-//!     // or
-//!     async fn test(elided: Elided<'_>) {}
-//! }
-//! ```
-//!
-//! <br><br>
-//!
 //! # Dyn traits
 //!
 //! Traits with async methods can be used as trait objects as long as they meet
@@ -302,7 +249,6 @@ extern crate proc_macro;
 mod expand;
 mod lifetime;
 mod parse;
-mod receiver;
 
 use crate::expand::expand;
 use crate::parse::{Item, Nothing};
