@@ -116,6 +116,21 @@ pub async fn test_object_safe_with_default() {
     object.f().await;
 }
 
+// https://github.com/dtolnay/async-trait/issues/1
+mod issue1 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait {
+        async fn f<U>(&self);
+    }
+
+    #[async_trait]
+    impl<T: Sync> Trait for Vec<T> {
+        async fn f<U>(&self) {}
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/2
 mod issue2 {
     use async_trait::async_trait;
