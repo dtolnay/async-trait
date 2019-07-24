@@ -161,7 +161,7 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
             where_clause.predicates.push(if assume_bound {
                 parse_quote!(Self: #lifetime)
             } else {
-                parse_quote!(Self: std::marker::#bound + #lifetime)
+                parse_quote!(Self: core::marker::#bound + #lifetime)
             });
         }
     } else {
@@ -188,8 +188,8 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
     }
 
     sig.decl.output = parse_quote! {
-        -> std::pin::Pin<std::boxed::Box<
-            dyn std::future::Future<Output = #ret> + std::marker::Send + #lifetime
+        -> core::pin::Pin<Box<
+            dyn core::future::Future<Output = #ret> + core::marker::Send + #lifetime
         >>
     };
 }
@@ -272,7 +272,7 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
                     };
                     let (_, generics, _) = generics.split_for_impl();
                     standalone.decl.generics.params.push(parse_quote! {
-                        AsyncTrait: ?Sized + #name #generics + std::marker::#bound
+                        AsyncTrait: ?Sized + #name #generics + core::marker::#bound
                     });
                     types.push(Ident::new("Self", Span::call_site()));
                 }
@@ -290,7 +290,7 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
                 };
                 let (_, generics, _) = generics.split_for_impl();
                 standalone.decl.generics.params.push(parse_quote! {
-                    AsyncTrait: ?Sized + #name #generics + std::marker::Send
+                    AsyncTrait: ?Sized + #name #generics + core::marker::Send
                 });
                 types.push(Ident::new("Self", Span::call_site()));
             }
@@ -322,7 +322,7 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
     let brace = block.brace_token;
     *block = parse_quote!({
         #standalone #block
-        std::pin::Pin::from(std::boxed::Box::new(#inner::<#(#types),*>(#(#args),*)))
+        core::pin::Pin::from(Box::new(#inner::<#(#types),*>(#(#args),*)))
     });
     block.brace_token = brace;
 }
