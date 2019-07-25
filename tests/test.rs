@@ -116,6 +116,21 @@ pub async fn test_object_safe_with_default() {
     object.f().await;
 }
 
+pub async fn test_object_no_send() {
+    #[async_trait(local)]
+    trait ObjectSafe: Sync {
+        async fn f(&self) {}
+    }
+
+    #[async_trait(local)]
+    impl ObjectSafe for Struct {
+        async fn f(&self) {}
+    }
+
+    let object = &Struct as &dyn ObjectSafe;
+    object.f().await;
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 mod issue1 {
     use async_trait::async_trait;

@@ -37,7 +37,7 @@ enum Context<'a> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item) {
+pub fn expand(input: &mut Item, is_local: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -47,6 +47,7 @@ pub fn expand(input: &mut Item) {
             };
             for inner in &mut input.items {
                 if let TraitItem::Method(method) = inner {
+<<<<<<< HEAD
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         let block = &mut method.default;
@@ -54,9 +55,24 @@ pub fn expand(input: &mut Item) {
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(context, sig, block, has_self);
+||||||| merged common ancestors
+                    if method.sig.asyncness.is_some() {
+                        if let Some(block) = &mut method.default {
+                            transform_block(context, &method.sig, block);
+=======
+                    if method.sig.asyncness.is_some() {
+                        if let Some(block) = &mut method.default {
+                            transform_block(context, &method.sig, block, is_local);
+>>>>>>> pr/10
                         }
                         let has_default = method.default.is_some();
+<<<<<<< HEAD
                         transform_sig(context, sig, has_self, has_default);
+||||||| merged common ancestors
+                        transform_sig(context, &mut method.sig, has_default);
+=======
+                        transform_sig(context, &mut method.sig, has_default, is_local);
+>>>>>>> pr/10
                     }
                 }
             }
@@ -69,12 +85,22 @@ pub fn expand(input: &mut Item) {
             };
             for inner in &mut input.items {
                 if let ImplItem::Method(method) = inner {
+<<<<<<< HEAD
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, has_self);
                         transform_sig(context, sig, has_self, false);
+||||||| merged common ancestors
+                    if method.sig.asyncness.is_some() {
+                        transform_block(context, &method.sig, &mut method.block);
+                        transform_sig(context, &mut method.sig, false);
+=======
+                    if method.sig.asyncness.is_some() {
+                        transform_block(context, &method.sig, &mut method.block, is_local);
+                        transform_sig(context, &mut method.sig, false, is_local);
+>>>>>>> pr/10
                     }
                 }
             }
@@ -95,7 +121,13 @@ pub fn expand(input: &mut Item) {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
+<<<<<<< HEAD
 fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_default: bool) {
+||||||| merged common ancestors
+fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
+=======
+fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool, is_local: bool) {
+>>>>>>> pr/10
     sig.decl.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let ret = match &sig.decl.output {
@@ -189,9 +221,15 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
         }
     }
 
+    let bounds: Supertraits = if is_local {
+        parse_quote!(#lifetime)
+    } else {
+        parse_quote!(#lifetime + core::marker::Send)
+    };
+
     sig.decl.output = parse_quote! {
         -> core::pin::Pin<Box<
-            dyn core::future::Future<Output = #ret> + core::marker::Send + #lifetime
+            dyn core::future::Future<Output = #ret> + #bounds
         >>
     };
 }
@@ -206,7 +244,13 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
 //         _self + x
 //     }
 //     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
+<<<<<<< HEAD
 fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has_self: bool) {
+||||||| merged common ancestors
+fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
+=======
+fn transform_block(context: Context, sig: &MethodSig, block: &mut Block, is_local: bool) {
+>>>>>>> pr/10
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
@@ -275,6 +319,26 @@ fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has
                     *arg = parse_quote! {
                         #under_self: &#lifetime #mutability AsyncTrait
                     };
+<<<<<<< HEAD
+||||||| merged common ancestors
+                    let (_, generics, _) = generics.split_for_impl();
+                    standalone.decl.generics.params.push(parse_quote! {
+                        AsyncTrait: ?Sized + #name #generics + core::marker::#bound
+                    });
+                    types.push(Ident::new("Self", Span::call_site()));
+=======
+                    let (_, generics, _) = generics.split_for_impl();
+                    if is_local {
+                        standalone.decl.generics.params.push(parse_quote! {
+                            AsyncTrait: ?Sized + #name #generics
+                        });
+                    } else {
+                        standalone.decl.generics.params.push(parse_quote! {
+                            AsyncTrait: ?Sized + #name #generics + core::marker::#bound
+                        });
+                    }
+                    types.push(Ident::new("Self", Span::call_site()));
+>>>>>>> pr/10
                 }
                 Context::Impl { receiver, .. } => {
                     *arg = parse_quote! {

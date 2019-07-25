@@ -305,15 +305,19 @@ mod parse;
 mod receiver;
 
 use crate::expand::expand;
-use crate::parse::{Item, Nothing};
+use crate::parse::Item;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_macro_input;
 
+mod kw {
+    syn::custom_keyword!(local);
+}
+
 #[proc_macro_attribute]
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
-    parse_macro_input!(args as Nothing);
+    let local = parse_macro_input!(args as Option<kw::local>).is_some();
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item);
+    expand(&mut item, local);
     TokenStream::from(quote!(#item))
 }
