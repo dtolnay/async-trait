@@ -22,6 +22,7 @@ struct HasSelf(bool);
 impl VisitMut for HasSelf {
     fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
         self.0 |= ty.path.segments[0].ident == "Self";
+        visit_mut::visit_type_path_mut(self, ty);
     }
 
     fn visit_arg_self_mut(&mut self, _arg: &mut ArgSelf) {
