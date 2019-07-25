@@ -160,7 +160,7 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
                 }
                 Context::Impl { .. } => true,
             };
-            where_clause.predicates.push(if assume_bound {
+            where_clause.predicates.push(if assume_bound || is_local {
                 parse_quote!(Self: #lifetime)
             } else {
                 parse_quote!(Self: core::marker::#bound + #lifetime)
@@ -189,10 +189,10 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
         }
     }
 
-    let bounds: Supertraits = if is_local {
-        parse_quote!(#lifetime)
+    let bounds = if is_local {
+        quote!(#lifetime)
     } else {
-        parse_quote!(#lifetime + core::marker::Send)
+        quote!(core::marker::Send + #lifetime)
     };
 
     sig.decl.output = parse_quote! {
