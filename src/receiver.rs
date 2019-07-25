@@ -2,7 +2,7 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, ArgSelf, ArgSelfRef, Block, ExprPath, Item, MethodSig, Path, QSelf, Type, TypePath,
+    ArgSelf, ArgSelfRef, Block, ExprPath, Ident, Item, MethodSig, Path, QSelf, Type, TypePath,
 };
 
 pub fn has_self_in_sig(sig: &mut MethodSig) -> bool {
@@ -127,7 +127,8 @@ impl VisitMut for ReplaceReceiver {
     fn visit_expr_path_mut(&mut self, expr: &mut ExprPath) {
         if expr.qself.is_none() {
             if expr.path.is_ident("self") {
-                expr.path.segments[0].ident = parse_quote!(_self);
+                let ident = &mut expr.path.segments[0].ident;
+                *ident = Ident::new("_self", ident.span());
             }
             self.self_to_qself_expr(&mut expr.qself, &mut expr.path);
         }

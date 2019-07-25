@@ -7,9 +7,9 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
 use syn::{
-    parse_quote, ArgCaptured, ArgSelfRef, Block, FnArg, GenericParam, Generics, Ident, ImplItem,
-    Lifetime, MethodSig, Pat, PatIdent, Path, ReturnType, Token, TraitItem, Type, TypeParam,
-    TypeParamBound, WhereClause,
+    parse_quote, ArgCaptured, ArgSelf, ArgSelfRef, Block, FnArg, GenericParam, Generics, Ident,
+    ImplItem, Lifetime, MethodSig, Pat, PatIdent, Path, ReturnType, Token, TraitItem, Type,
+    TypeParam, TypeParamBound, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -256,14 +256,16 @@ fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has
     let mut self_bound = None::<TypeParamBound>;
     match standalone.decl.inputs.iter_mut().next() {
         Some(arg @ FnArg::SelfRef(_)) => {
-            let (lifetime, mutability) = match arg {
+            let (lifetime, mutability, self_token) = match arg {
                 FnArg::SelfRef(ArgSelfRef {
                     lifetime,
                     mutability,
+                    self_token,
                     ..
-                }) => (lifetime, mutability),
+                }) => (lifetime, mutability, self_token),
                 _ => unreachable!(),
             };
+            let under_self = Ident::new("_self", self_token.span);
             match context {
                 Context::Trait { .. } => {
                     self_bound = Some(match mutability {
@@ -271,29 +273,36 @@ fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has
                         None => parse_quote!(core::marker::Sync),
                     });
                     *arg = parse_quote! {
-                        _self: &#lifetime #mutability AsyncTrait
+                        #under_self: &#lifetime #mutability AsyncTrait
                     };
                 }
                 Context::Impl { receiver, .. } => {
                     *arg = parse_quote! {
-                        _self: &#lifetime #mutability #receiver
+                        #under_self: &#lifetime #mutability #receiver
                     };
                 }
             }
         }
-        Some(arg @ FnArg::SelfValue(_)) => match context {
-            Context::Trait { .. } => {
-                self_bound = Some(parse_quote!(core::marker::Send));
-                *arg = parse_quote! {
-                    _self: AsyncTrait
-                };
+        Some(arg @ FnArg::SelfValue(_)) => {
+            let self_token = match arg {
+                FnArg::SelfValue(ArgSelf { self_token, .. }) => self_token,
+                _ => unreachable!(),
+            };
+            let under_self = Ident::new("_self", self_token.span);
+            match context {
+                Context::Trait { .. } => {
+                    self_bound = Some(parse_quote!(core::marker::Send));
+                    *arg = parse_quote! {
+                        #under_self: AsyncTrait
+                    };
+                }
+                Context::Impl { receiver, .. } => {
+                    *arg = parse_quote! {
+                        #under_self: #receiver
+                    };
+                }
             }
-            Context::Impl { receiver, .. } => {
-                *arg = parse_quote! {
-                    _self: #receiver
-                };
-            }
-        },
+        }
         Some(FnArg::Captured(ArgCaptured {
             pat: Pat::Ident(arg),
             ..
