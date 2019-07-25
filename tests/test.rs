@@ -148,3 +148,13 @@ mod issue2 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/9
+mod issue9 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Issue3: Sized + Send {
+        async fn f(_x: Self) {}
+    }
+}
