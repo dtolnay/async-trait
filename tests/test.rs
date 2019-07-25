@@ -121,12 +121,12 @@ mod issue1 {
     use async_trait::async_trait;
 
     #[async_trait]
-    trait Trait {
+    trait Issue1 {
         async fn f<U>(&self);
     }
 
     #[async_trait]
-    impl<T: Sync> Trait for Vec<T> {
+    impl<T: Sync> Issue1 for Vec<T> {
         async fn f<U>(&self) {}
     }
 }
@@ -154,7 +154,7 @@ mod issue9 {
     use async_trait::async_trait;
 
     #[async_trait]
-    pub trait Issue3: Sized + Send {
+    pub trait Issue9: Sized + Send {
         async fn f(_x: Self) {}
     }
 }
