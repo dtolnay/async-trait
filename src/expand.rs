@@ -95,7 +95,13 @@ pub fn expand(input: &mut Item, is_local: bool) {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
-fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_default: bool, is_local: bool) {
+fn transform_sig(
+    context: Context,
+    sig: &mut MethodSig,
+    has_self: bool,
+    has_default: bool,
+    is_local: bool,
+) {
     sig.decl.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let ret = match &sig.decl.output {
@@ -212,7 +218,13 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
 //         _self + x
 //     }
 //     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
-fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has_self: bool, is_local: bool) {
+fn transform_block(
+    context: Context,
+    sig: &mut MethodSig,
+    block: &mut Block,
+    has_self: bool,
+    is_local: bool,
+) {
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
