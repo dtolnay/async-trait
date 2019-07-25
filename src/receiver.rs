@@ -1,7 +1,41 @@
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
-use syn::{parse_quote, ExprPath, Item, Path, QSelf, Type, TypePath};
+use syn::{
+    parse_quote, ArgSelf, ArgSelfRef, Block, ExprPath, Item, MethodSig, Path, QSelf, Type, TypePath,
+};
+
+pub fn has_self_in_sig(sig: &mut MethodSig) -> bool {
+    let mut visitor = HasSelf(false);
+    visitor.visit_method_sig_mut(sig);
+    visitor.0
+}
+
+pub fn has_self_in_block(block: &mut Block) -> bool {
+    let mut visitor = HasSelf(false);
+    visitor.visit_block_mut(block);
+    visitor.0
+}
+
+struct HasSelf(bool);
+
+impl VisitMut for HasSelf {
+    fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
+        self.0 |= ty.path.segments[0].ident == "Self";
+    }
+
+    fn visit_arg_self_mut(&mut self, _arg: &mut ArgSelf) {
+        self.0 = true;
+    }
+
+    fn visit_arg_self_ref_mut(&mut self, _arg: &mut ArgSelfRef) {
+        self.0 = true;
+    }
+
+    fn visit_item_mut(&mut self, _: &mut Item) {
+        // Do not recurse into nested items.
+    }
+}
 
 pub struct ReplaceReceiver {
     pub with: Type,

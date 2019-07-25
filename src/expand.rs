@@ -1,6 +1,6 @@
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
-use crate::receiver::ReplaceReceiver;
+use crate::receiver::{has_self_in_block, has_self_in_sig, ReplaceReceiver};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::mem;
@@ -8,8 +8,8 @@ use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, ArgCaptured, ArgSelfRef, Block, FnArg, GenericParam, Generics, Ident, ImplItem,
-    Lifetime, MethodSig, Pat, PatIdent, Path, ReturnType, Token, TraitItem, Type, TypeParamBound,
-    WhereClause,
+    Lifetime, MethodSig, Pat, PatIdent, Path, ReturnType, Token, TraitItem, Type, TypeParam,
+    TypeParamBound, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -47,12 +47,16 @@ pub fn expand(input: &mut Item) {
             };
             for inner in &mut input.items {
                 if let TraitItem::Method(method) = inner {
-                    if method.sig.asyncness.is_some() {
-                        if let Some(block) = &mut method.default {
-                            transform_block(context, &method.sig, block);
+                    let sig = &mut method.sig;
+                    if sig.asyncness.is_some() {
+                        let block = &mut method.default;
+                        let mut has_self = has_self_in_sig(sig);
+                        if let Some(block) = block {
+                            has_self |= has_self_in_block(block);
+                            transform_block(context, sig, block, has_self);
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, &mut method.sig, has_default);
+                        transform_sig(context, sig, has_self, has_default);
                     }
                 }
             }
@@ -65,9 +69,12 @@ pub fn expand(input: &mut Item) {
             };
             for inner in &mut input.items {
                 if let ImplItem::Method(method) = inner {
-                    if method.sig.asyncness.is_some() {
-                        transform_block(context, &method.sig, &mut method.block);
-                        transform_sig(context, &mut method.sig, false);
+                    let sig = &mut method.sig;
+                    if sig.asyncness.is_some() {
+                        let block = &mut method.block;
+                        let has_self = has_self_in_sig(sig) || has_self_in_block(block);
+                        transform_block(context, sig, block, has_self);
+                        transform_sig(context, sig, has_self, false);
                     }
                 }
             }
@@ -88,17 +95,12 @@ pub fn expand(input: &mut Item) {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
-fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
+fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_default: bool) {
     sig.decl.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let ret = match &sig.decl.output {
         ReturnType::Default => quote!(()),
         ReturnType::Type(_, ret) => quote!(#ret),
-    };
-
-    let has_self = match sig.decl.inputs.iter_mut().next() {
-        Some(FnArg::SelfRef(_)) | Some(FnArg::SelfValue(_)) => true,
-        _ => false,
     };
 
     let mut elided = CollectLifetimes::new();
@@ -146,10 +148,10 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
         }
         sig.decl.generics.params.push(parse_quote!(#lifetime));
         if has_self {
-            let bound: Ident = match &sig.decl.inputs[0] {
-                FnArg::SelfRef(ArgSelfRef {
+            let bound: Ident = match sig.decl.inputs.iter().next() {
+                Some(FnArg::SelfRef(ArgSelfRef {
                     mutability: None, ..
-                }) => parse_quote!(Sync),
+                })) => parse_quote!(Sync),
                 _ => parse_quote!(Send),
             };
             let assume_bound = match context {
@@ -204,7 +206,7 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
 //         _self + x
 //     }
 //     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
-fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
+fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has_self: bool) {
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
@@ -251,6 +253,7 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
         .map(|param| param.ident.clone())
         .collect::<Vec<_>>();
 
+    let mut self_bound = None::<TypeParamBound>;
     match standalone.decl.inputs.iter_mut().next() {
         Some(arg @ FnArg::SelfRef(_)) => {
             let (lifetime, mutability) = match arg {
@@ -262,19 +265,14 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
                 _ => unreachable!(),
             };
             match context {
-                Context::Trait { name, generics, .. } => {
-                    let bound = match mutability {
-                        Some(_) => quote!(Send),
-                        None => quote!(Sync),
-                    };
+                Context::Trait { .. } => {
+                    self_bound = Some(match mutability {
+                        Some(_) => parse_quote!(core::marker::Send),
+                        None => parse_quote!(core::marker::Sync),
+                    });
                     *arg = parse_quote! {
                         _self: &#lifetime #mutability AsyncTrait
                     };
-                    let (_, generics, _) = generics.split_for_impl();
-                    standalone.decl.generics.params.push(parse_quote! {
-                        AsyncTrait: ?Sized + #name #generics + core::marker::#bound
-                    });
-                    types.push(Ident::new("Self", Span::call_site()));
                 }
                 Context::Impl { receiver, .. } => {
                     *arg = parse_quote! {
@@ -284,15 +282,11 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
             }
         }
         Some(arg @ FnArg::SelfValue(_)) => match context {
-            Context::Trait { name, generics, .. } => {
+            Context::Trait { .. } => {
+                self_bound = Some(parse_quote!(core::marker::Send));
                 *arg = parse_quote! {
                     _self: AsyncTrait
                 };
-                let (_, generics, _) = generics.split_for_impl();
-                standalone.decl.generics.params.push(parse_quote! {
-                    AsyncTrait: ?Sized + #name #generics + core::marker::Send
-                });
-                types.push(Ident::new("Self", Span::call_site()));
             }
             Context::Impl { receiver, .. } => {
                 *arg = parse_quote! {
@@ -301,6 +295,20 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
             }
         },
         _ => {}
+    }
+
+    if let Context::Trait { name, generics, .. } = context {
+        if has_self {
+            let (_, generics, _) = generics.split_for_impl();
+            let mut self_param: TypeParam = parse_quote!(AsyncTrait: ?Sized + #name #generics);
+            self_param.bounds.extend(self_bound);
+            standalone
+                .decl
+                .generics
+                .params
+                .push(GenericParam::Type(self_param));
+            types.push(Ident::new("Self", Span::call_site()));
+        }
     }
 
     if let Some(where_clause) = &mut standalone.decl.generics.where_clause {
