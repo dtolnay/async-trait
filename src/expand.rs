@@ -294,6 +294,14 @@ fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has
                 };
             }
         },
+        Some(FnArg::Captured(ArgCaptured {
+            pat: Pat::Ident(arg),
+            ..
+        })) => {
+            if arg.ident == "self" {
+                arg.ident = Ident::new("_self", arg.ident.span());
+            }
+        }
         _ => {}
     }
 
