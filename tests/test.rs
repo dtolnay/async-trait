@@ -117,12 +117,12 @@ pub async fn test_object_safe_with_default() {
 }
 
 pub async fn test_object_no_send() {
-    #[async_trait(local)]
+    #[async_trait(?Send)]
     trait ObjectSafe: Sync {
         async fn f(&self) {}
     }
 
-    #[async_trait(local)]
+    #[async_trait(?Send)]
     impl ObjectSafe for Struct {
         async fn f(&self) {}
     }
