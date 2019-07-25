@@ -91,6 +91,11 @@
 //!
 //! # Supported features
 //!
+//! ## Non-Send/Sync Async traits
+//! Not all async traits need Send/Sync TypeBounds. To avoid having them placed
+//! on your generated methods, annotate your traits as `#[async_trait(local)]`
+//!
+//!
 //! It is the intention that all features of Rust traits should work nicely with
 //! #\[async_trait\], but the edge cases are numerous. Please file an issue if
 //! you see unexpected borrow checker errors, type errors, or warnings. There is
@@ -305,15 +310,19 @@ mod parse;
 mod receiver;
 
 use crate::expand::expand;
-use crate::parse::{Item, Nothing};
+use crate::parse::Item;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_macro_input;
 
+mod kw {
+    syn::custom_keyword!(local);
+}
+
 #[proc_macro_attribute]
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
-    parse_macro_input!(args as Nothing);
+    let local = parse_macro_input!(args as Option<kw::local>).is_some();
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item);
+    expand(&mut item, local);
     TokenStream::from(quote!(#item))
 }

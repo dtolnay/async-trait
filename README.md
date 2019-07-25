@@ -97,6 +97,7 @@ can't be that badly broken.
 - :thumbsup:&ensp;Default implementations provided by the trait;
 - :thumbsup:&ensp;Elided lifetimes;
 - :thumbsup:&ensp;Dyn-capable traits.
+- :thumbsup:&ensp;Non-Send/Sync traits
 
 <br>
 

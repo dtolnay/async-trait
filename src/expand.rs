@@ -37,7 +37,7 @@ enum Context<'a> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item) {
+pub fn expand(input: &mut Item, is_local: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -49,10 +49,10 @@ pub fn expand(input: &mut Item) {
                 if let TraitItem::Method(method) = inner {
                     if method.sig.asyncness.is_some() {
                         if let Some(block) = &mut method.default {
-                            transform_block(context, &method.sig, block);
+                            transform_block(context, &method.sig, block, is_local);
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, &mut method.sig, has_default);
+                        transform_sig(context, &mut method.sig, has_default, is_local);
                     }
                 }
             }
@@ -66,8 +66,8 @@ pub fn expand(input: &mut Item) {
             for inner in &mut input.items {
                 if let ImplItem::Method(method) = inner {
                     if method.sig.asyncness.is_some() {
-                        transform_block(context, &method.sig, &mut method.block);
-                        transform_sig(context, &mut method.sig, false);
+                        transform_block(context, &method.sig, &mut method.block, is_local);
+                        transform_sig(context, &mut method.sig, false, is_local);
                     }
                 }
             }
@@ -88,7 +88,7 @@ pub fn expand(input: &mut Item) {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
-fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
+fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool, is_local: bool) {
     sig.decl.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let ret = match &sig.decl.output {
@@ -187,9 +187,15 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
         }
     }
 
+    let bounds: Supertraits = if is_local {
+        parse_quote!(#lifetime)
+    } else {
+        parse_quote!(#lifetime + core::marker::Send)
+    };
+
     sig.decl.output = parse_quote! {
         -> core::pin::Pin<Box<
-            dyn core::future::Future<Output = #ret> + core::marker::Send + #lifetime
+            dyn core::future::Future<Output = #ret> + #bounds
         >>
     };
 }
@@ -204,7 +210,7 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_default: bool) {
 //         _self + x
 //     }
 //     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
-fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
+fn transform_block(context: Context, sig: &MethodSig, block: &mut Block, is_local: bool) {
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
@@ -271,9 +277,15 @@ fn transform_block(context: Context, sig: &MethodSig, block: &mut Block) {
                         _self: &#lifetime #mutability AsyncTrait
                     };
                     let (_, generics, _) = generics.split_for_impl();
-                    standalone.decl.generics.params.push(parse_quote! {
-                        AsyncTrait: ?Sized + #name #generics + core::marker::#bound
-                    });
+                    if is_local {
+                        standalone.decl.generics.params.push(parse_quote! {
+                            AsyncTrait: ?Sized + #name #generics
+                        });
+                    } else {
+                        standalone.decl.generics.params.push(parse_quote! {
+                            AsyncTrait: ?Sized + #name #generics + core::marker::#bound
+                        });
+                    }
                     types.push(Ident::new("Self", Span::call_site()));
                 }
                 Context::Impl { receiver, .. } => {
