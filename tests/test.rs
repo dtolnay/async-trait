@@ -158,3 +158,21 @@ mod issue9 {
         async fn f(_x: Self) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/11
+mod issue11 {
+    use async_trait::async_trait;
+    use std::sync::Arc;
+
+    #[async_trait]
+    trait Issue11 {
+        async fn example(self: Arc<Self>);
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Issue11 for Struct {
+        async fn example(self: Arc<Self>) {}
+    }
+}
