@@ -1,6 +1,6 @@
 [package]
 name = "async-trait"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -16,3 +16,10 @@ proc-macro = true
 proc-macro2 = "0.4"
 quote = "0.6"
 syn = { version = "0.15.41", features = ["full", "visit-mut"] }
+
+[features]
+# Alternative implementation that produces worse error messages but potentially
+# works on old nightlies without https://github.com/rust-lang/rust/pull/61775 in
+# some cases where the default implementation does not. This feature is semver
+# exempt and might get removed without notice in any patch version.
+support_old_nightly = []

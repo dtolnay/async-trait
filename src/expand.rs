@@ -225,6 +225,15 @@ fn transform_block(
     has_self: bool,
     is_local: bool,
 ) {
+    if cfg!(feature = "support_old_nightly") {
+        let brace = block.brace_token;
+        *block = parse_quote!({
+            core::pin::Pin::from(Box::new(async move #block))
+        });
+        block.brace_token = brace;
+        return;
+    }
+
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
