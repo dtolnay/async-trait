@@ -207,6 +207,15 @@ fn transform_sig(context: Context, sig: &mut MethodSig, has_self: bool, has_defa
 //     }
 //     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
 fn transform_block(context: Context, sig: &mut MethodSig, block: &mut Block, has_self: bool) {
+    if cfg!(feature = "support_old_nightly") {
+        let brace = block.brace_token;
+        *block = parse_quote!({
+            core::pin::Pin::from(Box::new(async move #block))
+        });
+        block.brace_token = brace;
+        return;
+    }
+
     let inner = Ident::new(&format!("__{}", sig.ident), sig.ident.span());
     let args = sig
         .decl
