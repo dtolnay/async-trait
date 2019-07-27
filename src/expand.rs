@@ -1,4 +1,4 @@
-use crate::lifetime::CollectLifetimes;
+use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, ReplaceReceiver};
 use proc_macro2::{Span, TokenStream};
@@ -267,11 +267,13 @@ fn transform_block(
             .extend(where_clause.predicates);
     }
 
-    standalone
-        .decl
-        .generics
-        .params
-        .push(parse_quote!('async_trait));
+    if has_async_lifetime(&mut standalone, block) {
+        standalone
+            .decl
+            .generics
+            .params
+            .push(parse_quote!('async_trait));
+    }
 
     let mut types = standalone
         .decl

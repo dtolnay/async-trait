@@ -191,3 +191,16 @@ mod issue11 {
         async fn example(self: Arc<Self>) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/15
+mod issue15 {
+    use async_trait::async_trait;
+    use std::marker::PhantomData;
+
+    trait Trait {}
+
+    #[async_trait]
+    trait Issue15 {
+        async fn myfn(&self, _: PhantomData<dyn Trait + Send>) {}
+    }
+}
