@@ -137,6 +137,15 @@
 //!
 //! <br><br>
 //!
+//! # Non-threadsafe futures
+//!
+//! Not all async traits need futures that are `dyn Future + Send`. To avoid
+//! having Send and Sync bounds placed on the async trait methods, invoke the
+//! async trait macro as `#[async_trait(?Send)]` on both the trait and the impl
+//! blocks.
+//!
+//! <br>
+//!
 //! # Elided lifetimes
 //!
 //! Be aware that async fn syntax does not allow lifetime elision outside of `&`
