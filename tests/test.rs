@@ -204,3 +204,24 @@ mod issue15 {
         async fn myfn(&self, _: PhantomData<dyn Trait + Send>) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/17
+mod issue17 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Issue17 {
+        async fn f(&self);
+    }
+
+    struct Struct {
+        string: String,
+    }
+
+    #[async_trait]
+    impl Issue17 for Struct {
+        async fn f(&self) {
+            println!("{}", self.string);
+        }
+    }
+}
