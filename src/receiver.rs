@@ -1,8 +1,10 @@
+use proc_macro2::{Group, TokenStream, TokenTree};
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    ArgSelf, ArgSelfRef, Block, ExprPath, Ident, Item, MethodSig, Path, QSelf, Type, TypePath,
+    ArgSelf, ArgSelfRef, Block, ExprPath, Ident, Item, Macro, MethodSig, Path, QSelf, Type,
+    TypePath,
 };
 
 pub fn has_self_in_sig(sig: &mut MethodSig) -> bool {
@@ -126,10 +128,7 @@ impl VisitMut for ReplaceReceiver {
     // `Self::method` -> `<Receiver>::method`
     fn visit_expr_path_mut(&mut self, expr: &mut ExprPath) {
         if expr.qself.is_none() {
-            if expr.path.is_ident("self") {
-                let ident = &mut expr.path.segments[0].ident;
-                *ident = Ident::new("_self", ident.span());
-            }
+            prepend_underscore_to_self(&mut expr.path.segments[0].ident);
             self.self_to_qself_expr(&mut expr.qself, &mut expr.path);
         }
         visit_mut::visit_expr_path_mut(self, expr);
@@ -137,5 +136,46 @@ impl VisitMut for ReplaceReceiver {
 
     fn visit_item_mut(&mut self, _: &mut Item) {
         // Do not recurse into nested items.
+    }
+
+    fn visit_macro_mut(&mut self, i: &mut Macro) {
+        // We can't tell in general whether `self` inside a macro invocation
+        // refers to the self in the argument list or a different self
+        // introduced within the macro. Heuristic: if the macro input contains
+        // `fn`, then `self` is more likely to refer to something other than the
+        // outer function's self argument.
+        if !contains_fn(i.tts.clone()) {
+            i.tts = fold_token_stream(i.tts.clone());
+        }
+    }
+}
+
+fn contains_fn(tts: TokenStream) -> bool {
+    tts.into_iter().any(|tt| match tt {
+        TokenTree::Ident(ident) => ident == "fn",
+        TokenTree::Group(group) => contains_fn(group.stream()),
+        _ => false,
+    })
+}
+
+fn fold_token_stream(tts: TokenStream) -> TokenStream {
+    tts.into_iter()
+        .map(|tt| match tt {
+            TokenTree::Ident(mut ident) => {
+                prepend_underscore_to_self(&mut ident);
+                TokenTree::Ident(ident)
+            }
+            TokenTree::Group(group) => {
+                let content = fold_token_stream(group.stream());
+                TokenTree::Group(Group::new(group.delimiter(), content))
+            }
+            other => other,
+        })
+        .collect()
+}
+
+fn prepend_underscore_to_self(ident: &mut Ident) {
+    if ident == "self" {
+        *ident = Ident::new("_self", ident.span());
     }
 }
