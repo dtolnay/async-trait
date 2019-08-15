@@ -377,6 +377,7 @@ fn transform_block(
 
     let brace = block.brace_token;
     *block = parse_quote!({
+        #[allow(clippy::used_underscore_binding)]
         #standalone #block
         core::pin::Pin::from(Box::new(#inner::<#(#types),*>(#(#args),*)))
     });
