@@ -1,10 +1,10 @@
 use proc_macro2::Span;
 use syn::visit_mut::{self, VisitMut};
-use syn::{ArgSelfRef, Block, GenericArgument, Item, Lifetime, MethodSig, TypeReference};
+use syn::{Block, GenericArgument, Item, Lifetime, Receiver, Signature, TypeReference};
 
-pub fn has_async_lifetime(sig: &mut MethodSig, block: &mut Block) -> bool {
+pub fn has_async_lifetime(sig: &mut Signature, block: &mut Block) -> bool {
     let mut visitor = HasAsyncLifetime(false);
-    visitor.visit_method_sig_mut(sig);
+    visitor.visit_signature_mut(sig);
     visitor.visit_block_mut(block);
     visitor.0
 }
@@ -54,8 +54,10 @@ impl CollectLifetimes {
 }
 
 impl VisitMut for CollectLifetimes {
-    fn visit_arg_self_ref_mut(&mut self, arg: &mut ArgSelfRef) {
-        self.visit_opt_lifetime(&mut arg.lifetime);
+    fn visit_receiver_mut(&mut self, arg: &mut Receiver) {
+        if let Some((_, lifetime)) = &mut arg.reference {
+            self.visit_opt_lifetime(lifetime);
+        }
     }
 
     fn visit_type_reference_mut(&mut self, ty: &mut TypeReference) {
