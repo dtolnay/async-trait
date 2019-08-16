@@ -2,14 +2,11 @@ use proc_macro2::{Group, TokenStream, TokenTree};
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
-use syn::{
-    ArgSelf, ArgSelfRef, Block, ExprPath, Ident, Item, Macro, MethodSig, Path, QSelf, Type,
-    TypePath,
-};
+use syn::{Block, ExprPath, Ident, Item, Macro, Path, QSelf, Receiver, Signature, Type, TypePath};
 
-pub fn has_self_in_sig(sig: &mut MethodSig) -> bool {
+pub fn has_self_in_sig(sig: &mut Signature) -> bool {
     let mut visitor = HasSelf(false);
-    visitor.visit_method_sig_mut(sig);
+    visitor.visit_signature_mut(sig);
     visitor.0
 }
 
@@ -27,11 +24,7 @@ impl VisitMut for HasSelf {
         visit_mut::visit_type_path_mut(self, ty);
     }
 
-    fn visit_arg_self_mut(&mut self, _arg: &mut ArgSelf) {
-        self.0 = true;
-    }
-
-    fn visit_arg_self_ref_mut(&mut self, _arg: &mut ArgSelfRef) {
+    fn visit_receiver_mut(&mut self, _arg: &mut Receiver) {
         self.0 = true;
     }
 
@@ -95,7 +88,7 @@ impl ReplaceReceiver {
             path.segments.push_punct(Default::default());
             path.segments.extend(segments.into_pairs().skip(1));
         } else {
-            path.leading_colon = Some(**path.segments.first().unwrap().punct().unwrap());
+            path.leading_colon = Some(**path.segments.pairs().next().unwrap().punct().unwrap());
 
             let segments = mem::replace(&mut path.segments, Punctuated::new());
             path.segments = segments.into_pairs().skip(1).collect();
@@ -144,22 +137,23 @@ impl VisitMut for ReplaceReceiver {
         // introduced within the macro. Heuristic: if the macro input contains
         // `fn`, then `self` is more likely to refer to something other than the
         // outer function's self argument.
-        if !contains_fn(i.tts.clone()) {
-            i.tts = fold_token_stream(i.tts.clone());
+        if !contains_fn(i.tokens.clone()) {
+            i.tokens = fold_token_stream(i.tokens.clone());
         }
     }
 }
 
-fn contains_fn(tts: TokenStream) -> bool {
-    tts.into_iter().any(|tt| match tt {
+fn contains_fn(tokens: TokenStream) -> bool {
+    tokens.into_iter().any(|tt| match tt {
         TokenTree::Ident(ident) => ident == "fn",
         TokenTree::Group(group) => contains_fn(group.stream()),
         _ => false,
     })
 }
 
-fn fold_token_stream(tts: TokenStream) -> TokenStream {
-    tts.into_iter()
+fn fold_token_stream(tokens: TokenStream) -> TokenStream {
+    tokens
+        .into_iter()
         .map(|tt| match tt {
             TokenTree::Ident(mut ident) => {
                 prepend_underscore_to_self(&mut ident);
