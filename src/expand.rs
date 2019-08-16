@@ -233,7 +233,7 @@ fn transform_block(
         return;
     }
 
-    let inner = format_ident!("__{}", sig.ident, span = sig.ident.span());
+    let inner = format_ident!("__{}", sig.ident);
     let args = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
         FnArg::Receiver(_) => quote!(self),
         FnArg::Typed(arg) => {
