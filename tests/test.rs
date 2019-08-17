@@ -225,3 +225,31 @@ mod issue17 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/23
+mod issue23 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Issue23 {
+        async fn f(self);
+
+        async fn g(mut self)
+        where
+            Self: Sized,
+        {
+            do_something(&mut self);
+        }
+    }
+
+    struct S {}
+
+    #[async_trait]
+    impl Issue23 for S {
+        async fn f(mut self) {
+            do_something(&mut self);
+        }
+    }
+
+    fn do_something<T>(_: &mut T) {}
+}

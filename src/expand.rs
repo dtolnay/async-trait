@@ -307,8 +307,12 @@ fn transform_block(
             }
         }
         Some(arg @ FnArg::Receiver(_)) => {
-            let self_token = match arg {
-                FnArg::Receiver(Receiver { self_token, .. }) => self_token,
+            let (self_token, mutability) = match arg {
+                FnArg::Receiver(Receiver {
+                    self_token,
+                    mutability,
+                    ..
+                }) => (self_token, mutability),
                 _ => unreachable!(),
             };
             let under_self = Ident::new("_self", self_token.span);
@@ -316,12 +320,12 @@ fn transform_block(
                 Context::Trait { .. } => {
                     self_bound = Some(parse_quote!(core::marker::Send));
                     *arg = parse_quote! {
-                        #under_self: AsyncTrait
+                        #mutability #under_self: AsyncTrait
                     };
                 }
                 Context::Impl { receiver, .. } => {
                     *arg = parse_quote! {
-                        #under_self: #receiver
+                        #mutability #under_self: #receiver
                     };
                 }
             }
