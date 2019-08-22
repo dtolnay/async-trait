@@ -13,8 +13,6 @@ in a trait produces the following error:
 [rust-lang/rust#62149]: https://github.com/rust-lang/rust/issues/62149
 
 ```rust
-#![feature(async_await)]
-
 trait MyTrait {
     async fn f() {}
 }
@@ -41,8 +39,6 @@ The only thing to notice here is that we write an `#[async_trait]` macro on top
 of traits and trait impls that contain async fn, and then they work.
 
 ```rust
-#![feature(async_await)]
-
 use async_trait::async_trait;
 
 #[async_trait]
