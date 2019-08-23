@@ -8,8 +8,6 @@
 //! [rust-lang/rust#62149]: https://github.com/rust-lang/rust/issues/62149
 //!
 //! ```compile_fail
-//! #![feature(async_await)]
-//!
 //! trait MyTrait {
 //!     async fn f() {}
 //! }
@@ -36,8 +34,6 @@
 //! top of traits and trait impls that contain async fn, and then they work.
 //!
 //! ```
-//! #![feature(async_await)]
-//!
 //! use async_trait::async_trait;
 //!
 //! #[async_trait]
@@ -156,8 +152,6 @@
 //! error message.
 //!
 //! ```compile_fail
-//! # #![feature(async_await)]
-//! #
 //! # use async_trait::async_trait;
 //! #
 //! type Elided<'a> = &'a usize;
@@ -179,8 +173,6 @@
 //! The fix is to name the lifetime or use `'_`.
 //!
 //! ```
-//! # #![feature(async_await)]
-//! #
 //! # use async_trait::async_trait;
 //! #
 //! # type Elided<'a> = &'a usize;
@@ -206,8 +198,6 @@
 //! by value, no associated types, etc.
 //!
 //! ```
-//! # #![feature(async_await)]
-//! #
 //! # use async_trait::async_trait;
 //! #
 //! #[async_trait]
@@ -262,8 +252,6 @@
 //! the default implementations are applicable to them:
 //!
 //! ```
-//! # #![feature(async_await)]
-//! #
 //! # use async_trait::async_trait;
 //! #
 //! #[async_trait]
@@ -285,8 +273,6 @@
 //! bounding them with `Self: Sized`:
 //!
 //! ```
-//! # #![feature(async_await)]
-//! #
 //! # use async_trait::async_trait;
 //! #
 //! #[async_trait]
