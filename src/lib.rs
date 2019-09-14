@@ -125,7 +125,7 @@
 //!             /* the original method body */
 //!         }
 //!
-//!         Pin::from(Box::new(run(self)))
+//!         Box::pin(run(self))
 //!     }
 //! }
 //! # };

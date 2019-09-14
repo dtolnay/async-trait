@@ -216,7 +216,7 @@ fn transform_sig(
 //     async fn f<T, AsyncTrait>(_self: &AsyncTrait, x: &T) -> Ret {
 //         _self + x
 //     }
-//     Pin::from(Box::new(async_trait_method::<T, Self>(self, x)))
+//     Box::pin(async_trait_method::<T, Self>(self, x))
 fn transform_block(
     context: Context,
     sig: &mut Signature,
@@ -227,7 +227,7 @@ fn transform_block(
     if cfg!(feature = "support_old_nightly") {
         let brace = block.brace_token;
         *block = parse_quote!({
-            core::pin::Pin::from(Box::new(async move #block))
+            Box::pin(async move #block)
         });
         block.brace_token = brace;
         return;
@@ -375,7 +375,7 @@ fn transform_block(
     *block = parse_quote!({
         #[allow(clippy::used_underscore_binding)]
         #standalone #block
-        core::pin::Pin::from(Box::new(#inner::<#(#types),*>(#(#args),*)))
+        Box::pin(#inner::<#(#types),*>(#(#args),*))
     });
     block.brace_token = brace;
 }
