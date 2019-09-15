@@ -2,7 +2,7 @@ language: rust
 
 matrix:
   include:
-    - rust: nightly
+    - rust: nightly-2019-09-10
       script: cargo test
     - rust: stable
       script: cargo check
