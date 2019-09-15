@@ -1,12 +1,8 @@
 language: rust
 
-rust:
-  - nightly
-
-script:
-  - cargo test
-
 matrix:
   include:
+    - rust: nightly
+      script: cargo test
     - rust: stable
       script: cargo check
