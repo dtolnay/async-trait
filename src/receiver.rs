@@ -19,6 +19,11 @@ pub fn has_self_in_block(block: &mut Block) -> bool {
 struct HasSelf(bool);
 
 impl VisitMut for HasSelf {
+    fn visit_expr_path_mut(&mut self, expr: &mut ExprPath) {
+        self.0 |= expr.path.segments[0].ident == "Self";
+        visit_mut::visit_expr_path_mut(self, expr);
+    }
+
     fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
         self.0 |= ty.path.segments[0].ident == "Self";
         visit_mut::visit_type_path_mut(self, ty);
