@@ -35,6 +35,22 @@ enum Context<'a> {
     },
 }
 
+impl Context<'_> {
+    fn lifetimes<'a>(&'a self) -> impl Iterator<Item = &'a GenericParam> {
+        let generics = match self {
+            Context::Trait { generics, .. } => generics,
+            Context::Impl { impl_generics, .. } => impl_generics,
+        };
+        generics.params.iter().filter(|param| {
+            if let GenericParam::Lifetime(_) = param {
+                true
+            } else {
+                false
+            }
+        })
+    }
+}
+
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
 pub fn expand(input: &mut Item, is_local: bool) {
@@ -118,7 +134,11 @@ fn transform_sig(
     }
 
     let lifetime: Lifetime;
-    if !sig.generics.params.is_empty() || !elided.lifetimes.is_empty() || has_self {
+    if !sig.generics.params.is_empty()
+        || context.lifetimes().count() != 0
+        || !elided.lifetimes.is_empty()
+        || has_self
+    {
         lifetime = parse_quote!('async_trait);
         let where_clause = sig
             .generics
@@ -127,7 +147,7 @@ fn transform_sig(
                 where_token: Default::default(),
                 predicates: Punctuated::new(),
             });
-        for param in &sig.generics.params {
+        for param in sig.generics.params.iter().chain(context.lifetimes()) {
             match param {
                 GenericParam::Type(param) => {
                     let param = &param.ident;

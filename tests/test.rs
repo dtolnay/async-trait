@@ -302,3 +302,28 @@ mod issue25 {
         assert_eq!(executor::block_on_simple(fut), "special");
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/28
+mod issue28 {
+    use async_trait::async_trait;
+
+    struct Str<'a>(&'a str);
+
+    #[allow(dead_code)]
+    struct Struct {}
+
+    #[async_trait]
+    trait Lifetime<'a> {
+        async fn f(x: Str<'a>) -> &'a str;
+        async fn g(x: Str<'a>) -> &'a str {
+            x.0
+        }
+    }
+
+    #[async_trait]
+    impl<'a> Lifetime<'a> for Struct {
+        async fn f(x: Str<'a>) -> &'a str {
+            x.0
+        }
+    }
+}
