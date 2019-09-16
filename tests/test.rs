@@ -341,3 +341,22 @@ mod issue28 {
         async fn h(); // do not chain
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/31
+pub mod issue31 {
+    use async_trait::async_trait;
+
+    pub struct Struct<'a> {
+        pub name: &'a str,
+    }
+
+    #[async_trait]
+    pub trait Trait<'a> {
+        async fn hello(thing: Struct<'a>) -> String;
+        async fn hello_twice(one: Struct<'a>, two: Struct<'a>) -> String {
+            let str1 = Self::hello(one).await;
+            let str2 = Self::hello(two).await;
+            str1 + &str2
+        }
+    }
+}
