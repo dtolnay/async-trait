@@ -313,7 +313,7 @@ mod issue28 {
     struct Struct {}
 
     #[async_trait]
-    trait Lifetime<'a> {
+    trait Trait1<'a> {
         async fn f(x: Str<'a>) -> &'a str;
         async fn g(x: Str<'a>) -> &'a str {
             x.0
@@ -321,9 +321,26 @@ mod issue28 {
     }
 
     #[async_trait]
-    impl<'a> Lifetime<'a> for Struct {
+    impl<'a> Trait1<'a> for Struct {
         async fn f(x: Str<'a>) -> &'a str {
             x.0
         }
+    }
+
+    #[async_trait]
+    trait Trait2 {
+        async fn f();
+    }
+
+    #[async_trait]
+    impl<'a> Trait2 for &'a () {
+        async fn f() {}
+    }
+
+    #[async_trait]
+    trait Trait3<'a, 'b> {
+        async fn f(_: &'a &'b ()); // chain 'a and 'b
+        async fn g(_: &'b ()); // chain 'b only
+        async fn h(); // do not chain
     }
 }
