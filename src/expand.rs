@@ -125,18 +125,18 @@ fn transform_sig(
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
-    let mut elided = CollectLifetimes::new();
+    let mut lifetimes = CollectLifetimes::new();
     for arg in sig.inputs.iter_mut() {
         match arg {
-            FnArg::Receiver(arg) => elided.visit_receiver_mut(arg),
-            FnArg::Typed(arg) => elided.visit_type_mut(&mut arg.ty),
+            FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
+            FnArg::Typed(arg) => lifetimes.visit_type_mut(&mut arg.ty),
         }
     }
 
     let lifetime: Lifetime;
     if !sig.generics.params.is_empty()
-        || !elided.lifetimes.is_empty()
-        || !elided.unelided.is_empty()
+        || !lifetimes.elided.is_empty()
+        || !lifetimes.explicit.is_empty()
         || has_self
     {
         lifetime = parse_quote!('async_trait);
@@ -151,7 +151,7 @@ fn transform_sig(
             .generics
             .params
             .iter()
-            .chain(context.lifetimes(&elided.unelided))
+            .chain(context.lifetimes(&lifetimes.explicit))
         {
             match param {
                 GenericParam::Type(param) => {
@@ -169,7 +169,7 @@ fn transform_sig(
                 GenericParam::Const(_) => {}
             }
         }
-        for elided in elided.lifetimes {
+        for elided in lifetimes.elided {
             sig.generics.params.push(parse_quote!(#elided));
             where_clause
                 .predicates
