@@ -134,7 +134,7 @@ pub async fn test_object_no_send() {
 }
 
 // https://github.com/dtolnay/async-trait/issues/1
-mod issue1 {
+pub mod issue1 {
     use async_trait::async_trait;
 
     #[async_trait]
@@ -149,7 +149,7 @@ mod issue1 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/2
-mod issue2 {
+pub mod issue2 {
     use async_trait::async_trait;
     use std::future::Future;
 
@@ -167,7 +167,7 @@ mod issue2 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/9
-mod issue9 {
+pub mod issue9 {
     use async_trait::async_trait;
 
     #[async_trait]
@@ -177,7 +177,7 @@ mod issue9 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/11
-mod issue11 {
+pub mod issue11 {
     use async_trait::async_trait;
     use std::sync::Arc;
 
@@ -195,7 +195,7 @@ mod issue11 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/15
-mod issue15 {
+pub mod issue15 {
     use async_trait::async_trait;
     use std::marker::PhantomData;
 
@@ -208,7 +208,7 @@ mod issue15 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/17
-mod issue17 {
+pub mod issue17 {
     use async_trait::async_trait;
 
     #[async_trait]
@@ -229,7 +229,7 @@ mod issue17 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/23
-mod issue23 {
+pub mod issue23 {
     use async_trait::async_trait;
 
     #[async_trait]
@@ -258,7 +258,7 @@ mod issue23 {
 
 // https://github.com/dtolnay/async-trait/issues/25
 #[cfg(async_trait_nightly_testing)]
-mod issue25 {
+pub mod issue25 {
     use crate::executor;
     use async_trait::async_trait;
     use std::fmt::{Display, Write};
@@ -304,7 +304,7 @@ mod issue25 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/28
-mod issue28 {
+pub mod issue28 {
     use async_trait::async_trait;
 
     struct Str<'a>(&'a str);
