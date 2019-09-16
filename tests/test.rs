@@ -1,4 +1,8 @@
+#![cfg_attr(async_trait_nightly_testing, feature(specialization))]
+
 use async_trait::async_trait;
+
+pub mod executor;
 
 #[async_trait]
 trait Trait {
@@ -250,4 +254,51 @@ mod issue23 {
     }
 
     fn do_something<T>(_: &mut T) {}
+}
+
+// https://github.com/dtolnay/async-trait/issues/25
+#[cfg(async_trait_nightly_testing)]
+mod issue25 {
+    use crate::executor;
+    use async_trait::async_trait;
+    use std::fmt::{Display, Write};
+
+    #[async_trait]
+    trait AsyncToString {
+        async fn async_to_string(&self) -> String;
+    }
+
+    #[async_trait]
+    impl AsyncToString for String {
+        async fn async_to_string(&self) -> String {
+            "special".to_owned()
+        }
+    }
+
+    macro_rules! hide_from_stable_parser {
+        ($($tt:tt)*) => {
+            $($tt)*
+        };
+    }
+
+    hide_from_stable_parser! {
+        #[async_trait]
+        impl<T: ?Sized + Display + Sync> AsyncToString for T {
+            default async fn async_to_string(&self) -> String {
+                let mut buf = String::new();
+                buf.write_fmt(format_args!("{}", self)).unwrap();
+                buf
+            }
+        }
+    }
+
+    #[test]
+    fn test() {
+        let fut = true.async_to_string();
+        assert_eq!(executor::block_on_simple(fut), "true");
+
+        let string = String::new();
+        let fut = string.async_to_string();
+        assert_eq!(executor::block_on_simple(fut), "special");
+    }
 }
