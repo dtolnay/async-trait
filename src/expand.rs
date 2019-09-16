@@ -36,14 +36,14 @@ enum Context<'a> {
 }
 
 impl Context<'_> {
-    fn lifetimes<'a>(&'a self, used: &'a [Ident]) -> impl Iterator<Item = &'a GenericParam> {
+    fn lifetimes<'a>(&'a self, used: &'a [Lifetime]) -> impl Iterator<Item = &'a GenericParam> {
         let generics = match self {
             Context::Trait { generics, .. } => generics,
             Context::Impl { impl_generics, .. } => impl_generics,
         };
         generics.params.iter().filter(move |param| {
             if let GenericParam::Lifetime(param) = param {
-                used.contains(&param.lifetime.ident)
+                used.contains(&param.lifetime)
             } else {
                 false
             }

@@ -1,6 +1,6 @@
 use proc_macro2::Span;
 use syn::visit_mut::{self, VisitMut};
-use syn::{Block, GenericArgument, Ident, Item, Lifetime, Receiver, Signature, TypeReference};
+use syn::{Block, GenericArgument, Item, Lifetime, Receiver, Signature, TypeReference};
 
 pub fn has_async_lifetime(sig: &mut Signature, block: &mut Block) -> bool {
     let mut visitor = HasAsyncLifetime(false);
@@ -23,7 +23,7 @@ impl VisitMut for HasAsyncLifetime {
 
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
-    pub explicit: Vec<Ident>,
+    pub explicit: Vec<Lifetime>,
 }
 
 impl CollectLifetimes {
@@ -45,7 +45,7 @@ impl CollectLifetimes {
         if lifetime.ident == "_" {
             *lifetime = self.next_lifetime();
         } else {
-            self.explicit.push(lifetime.ident.clone());
+            self.explicit.push(lifetime.clone());
         }
     }
 
