@@ -309,9 +309,6 @@ mod issue28 {
 
     struct Str<'a>(&'a str);
 
-    #[allow(dead_code)]
-    struct Struct {}
-
     #[async_trait]
     trait Trait1<'a> {
         async fn f(x: Str<'a>) -> &'a str;
@@ -321,7 +318,7 @@ mod issue28 {
     }
 
     #[async_trait]
-    impl<'a> Trait1<'a> for Struct {
+    impl<'a> Trait1<'a> for str {
         async fn f(x: Str<'a>) -> &'a str {
             x.0
         }
