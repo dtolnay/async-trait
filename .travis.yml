@@ -2,7 +2,7 @@ language: rust
 
 matrix:
   include:
-    - rust: nightly-2019-09-10
+    - rust: nightly
       script: cargo test
       env: RUSTFLAGS='--cfg async_trait_nightly_testing'
     - rust: stable
