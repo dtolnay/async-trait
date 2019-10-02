@@ -2,7 +2,9 @@ language: rust
 
 matrix:
   include:
-    - rust: nightly
+      # Pinned due to a bug in nightly:
+      # https://github.com/rust-lang/rust/issues/64964
+    - rust: nightly-2019-10-01
       script: cargo test
       env: RUSTFLAGS='--cfg async_trait_nightly_testing'
     - rust: stable
