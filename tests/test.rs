@@ -361,15 +361,14 @@ pub mod issue31 {
     }
 }
 
+#[async_trait]
+pub unsafe trait UnsafeTrait {}
 
 #[async_trait]
-pub unsafe trait UnsafeTrait { }
+unsafe impl UnsafeTrait for () {}
 
 #[async_trait]
-unsafe impl UnsafeTrait for () { }
+pub(crate) unsafe trait UnsafeTraitPubCrate {}
 
 #[async_trait]
-pub(crate) unsafe trait UnsafeTraitPubCrate { }
-
-#[async_trait]
-unsafe trait UnsafeTraitPrivate { }
+unsafe trait UnsafeTraitPrivate {}
