@@ -4,6 +4,9 @@ use async_trait::async_trait;
 
 pub mod executor;
 
+// Dummy module to check that the expansion refer to rust's core crate
+mod core {}
+
 #[async_trait]
 trait Trait {
     type Assoc;

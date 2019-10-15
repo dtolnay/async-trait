@@ -194,7 +194,7 @@ fn transform_sig(
             where_clause.predicates.push(if assume_bound || is_local {
                 parse_quote!(Self: #lifetime)
             } else {
-                parse_quote!(Self: core::marker::#bound + #lifetime)
+                parse_quote!(Self: ::core::marker::#bound + #lifetime)
             });
         }
     } else {
@@ -222,12 +222,12 @@ fn transform_sig(
     let bounds = if is_local {
         quote!(#lifetime)
     } else {
-        quote!(core::marker::Send + #lifetime)
+        quote!(::core::marker::Send + #lifetime)
     };
 
     sig.output = parse_quote! {
-        -> core::pin::Pin<Box<
-            dyn core::future::Future<Output = #ret> + #bounds
+        -> ::core::pin::Pin<Box<
+            dyn ::core::future::Future<Output = #ret> + #bounds
         >>
     };
 }
@@ -317,8 +317,8 @@ fn transform_block(
             match context {
                 Context::Trait { .. } => {
                     self_bound = Some(match mutability {
-                        Some(_) => parse_quote!(core::marker::Send),
-                        None => parse_quote!(core::marker::Sync),
+                        Some(_) => parse_quote!(::core::marker::Send),
+                        None => parse_quote!(::core::marker::Sync),
                     });
                     *arg = parse_quote! {
                         #under_self: &#lifetime #mutability AsyncTrait
@@ -343,7 +343,7 @@ fn transform_block(
             let under_self = Ident::new("_self", self_token.span);
             match context {
                 Context::Trait { .. } => {
-                    self_bound = Some(parse_quote!(core::marker::Send));
+                    self_bound = Some(parse_quote!(::core::marker::Send));
                     *arg = parse_quote! {
                         #mutability #under_self: AsyncTrait
                     };
