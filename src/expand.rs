@@ -179,9 +179,7 @@ fn transform_sig(
             _ => parse_quote!(Send),
         };
         let assume_bound = match context {
-            Context::Trait { supertraits, .. } => {
-                !has_default || has_bound(supertraits, &bound)
-            }
+            Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
             Context::Impl { .. } => true,
         };
         where_clause.predicates.push(if assume_bound || is_local {
