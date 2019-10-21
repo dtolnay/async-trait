@@ -9,7 +9,7 @@ use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
     Path, Receiver, ReturnType, Signature, Token, TraitItem, Type, TypeParam, TypeParamBound,
-    WhereClause,
+    WhereClause, WherePredicate,
 };
 
 impl ToTokens for Item {
@@ -179,9 +179,7 @@ fn transform_sig(
             _ => parse_quote!(Send),
         };
         let assume_bound = match context {
-            Context::Trait { supertraits, .. } => {
-                !has_default || has_bound(supertraits, &bound)
-            }
+            Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
             Context::Impl { .. } => true,
         };
         where_clause.predicates.push(if assume_bound || is_local {
@@ -220,6 +218,22 @@ fn transform_sig(
             dyn ::core::future::Future<Output = #ret> + #bounds
         >>
     };
+}
+
+//
+// Returns true if provided `WherePredicate` is bound on Self.
+//
+fn is_self_bound_predicate(predicate: &WherePredicate) -> bool {
+    if let WherePredicate::Type(where_predicate) = predicate {
+        if let syn::Type::Path(path) = &where_predicate.bounded_ty {
+            return path
+                .path
+                .segments
+                .iter()
+                .any(|value| value.ident == Ident::new("Self", Span::call_site()));
+        }
+    }
+    false
 }
 
 // Input:
@@ -263,12 +277,31 @@ fn transform_block(
     let mut standalone = sig.clone();
     standalone.ident = inner.clone();
 
-    let outer_generics = match context {
+    let mut outer_generics = match context {
         Context::Trait { generics, .. } => generics,
         Context::Impl { impl_generics, .. } => impl_generics,
-    };
+    }
+    .clone();
+
+    if !has_self {
+        outer_generics.where_clause = outer_generics.where_clause.map(
+            |WhereClause {
+                 predicates,
+                 where_token,
+             }| WhereClause {
+                predicates: predicates
+                    .into_iter()
+                    .filter(|predicate| !is_self_bound_predicate(predicate))
+                    .collect(),
+                where_token,
+            },
+        );
+    }
+
     let fn_generics = mem::replace(&mut standalone.generics, outer_generics.clone());
+
     standalone.generics.params.extend(fn_generics.params);
+
     if let Some(where_clause) = fn_generics.where_clause {
         standalone
             .generics
@@ -387,11 +420,19 @@ fn transform_block(
     replace.visit_block_mut(block);
 
     let brace = block.brace_token;
-    *block = parse_quote!({
-        #[allow(clippy::used_underscore_binding)]
-        #standalone #block
-        Box::pin(#inner::<#(#types),*>(#(#args),*))
-    });
+    *block = if !types.is_empty() {
+        parse_quote!({
+            #[allow(clippy::used_underscore_binding)]
+            #standalone #block
+            Box::pin(#inner::<#(#types),*>(#(#args),*))
+        })
+    } else {
+        parse_quote!({
+            #[allow(clippy::used_underscore_binding)]
+            #standalone #block
+            Box::pin(#inner(#(#args),*))
+        })
+    };
     block.brace_token = brace;
 }
 
