@@ -136,6 +136,18 @@ pub async fn test_object_no_send() {
     object.f().await;
 }
 
+#[async_trait]
+pub unsafe trait UnsafeTrait {}
+
+#[async_trait]
+unsafe impl UnsafeTrait for () {}
+
+#[async_trait]
+pub(crate) unsafe trait UnsafeTraitPubCrate {}
+
+#[async_trait]
+unsafe trait UnsafeTraitPrivate {}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
@@ -363,15 +375,3 @@ pub mod issue31 {
         }
     }
 }
-
-#[async_trait]
-pub unsafe trait UnsafeTrait {}
-
-#[async_trait]
-unsafe impl UnsafeTrait for () {}
-
-#[async_trait]
-pub(crate) unsafe trait UnsafeTraitPubCrate {}
-
-#[async_trait]
-unsafe trait UnsafeTraitPrivate {}
