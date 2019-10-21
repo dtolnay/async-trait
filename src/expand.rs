@@ -420,19 +420,19 @@ fn transform_block(
     replace.visit_block_mut(block);
 
     let brace = block.brace_token;
-    *block = if !types.is_empty() {
-        parse_quote!({
-            #[allow(clippy::used_underscore_binding)]
-            #standalone #block
-            Box::pin(#inner::<#(#types),*>(#(#args),*))
-        })
+
+    let types_specifier = if !types.is_empty() {
+        quote! { ::<#(#types),*> }
     } else {
-        parse_quote!({
-            #[allow(clippy::used_underscore_binding)]
-            #standalone #block
-            Box::pin(#inner(#(#args),*))
-        })
+        quote! {}
     };
+
+    *block = parse_quote!({
+        #[allow(clippy::used_underscore_binding)]
+        #standalone #block
+        Box::pin(#inner#types_specifier(#(#args),*))
+    });
+
     block.brace_token = brace;
 }
 
