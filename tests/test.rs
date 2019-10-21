@@ -375,3 +375,22 @@ pub mod issue31 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/42
+pub mod issue42 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Context: Sized {
+        async fn from_parts() -> Self;
+    }
+
+    pub struct TokenContext;
+
+    #[async_trait]
+    impl Context for TokenContext {
+        async fn from_parts() -> TokenContext {
+            TokenContext
+        }
+    }
+}
