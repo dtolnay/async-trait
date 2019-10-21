@@ -224,8 +224,8 @@ fn transform_sig(
 // Returns true if provided `WherePredicate` is bound on Self.
 //
 fn is_self_bound_predicate(predicate: &WherePredicate) -> bool {
-    if let WherePredicate::Type(where_predicate) = predicate {
-        if let syn::Type::Path(path) = &where_predicate.bounded_ty {
+    if let WherePredicate::Type(predicate_type) = predicate {
+        if let Type::Path(path) = &predicate_type.bounded_ty {
             return path
                 .path
                 .segments
