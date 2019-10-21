@@ -133,73 +133,63 @@ fn transform_sig(
         }
     }
 
-    let lifetime: Lifetime;
-    if !sig.generics.params.is_empty()
-        || !lifetimes.elided.is_empty()
-        || !lifetimes.explicit.is_empty()
-        || has_self
+    let where_clause = sig
+        .generics
+        .where_clause
+        .get_or_insert_with(|| WhereClause {
+            where_token: Default::default(),
+            predicates: Punctuated::new(),
+        });
+    for param in sig
+        .generics
+        .params
+        .iter()
+        .chain(context.lifetimes(&lifetimes.explicit))
     {
-        lifetime = parse_quote!('async_trait);
-        let where_clause = sig
-            .generics
-            .where_clause
-            .get_or_insert_with(|| WhereClause {
-                where_token: Default::default(),
-                predicates: Punctuated::new(),
-            });
-        for param in sig
-            .generics
-            .params
-            .iter()
-            .chain(context.lifetimes(&lifetimes.explicit))
-        {
-            match param {
-                GenericParam::Type(param) => {
-                    let param = &param.ident;
-                    where_clause
-                        .predicates
-                        .push(parse_quote!(#param: #lifetime));
-                }
-                GenericParam::Lifetime(param) => {
-                    let param = &param.lifetime;
-                    where_clause
-                        .predicates
-                        .push(parse_quote!(#param: #lifetime));
-                }
-                GenericParam::Const(_) => {}
+        match param {
+            GenericParam::Type(param) => {
+                let param = &param.ident;
+                where_clause
+                    .predicates
+                    .push(parse_quote!(#param: 'async_trait));
             }
+            GenericParam::Lifetime(param) => {
+                let param = &param.lifetime;
+                where_clause
+                    .predicates
+                    .push(parse_quote!(#param: 'async_trait));
+            }
+            GenericParam::Const(_) => {}
         }
-        for elided in lifetimes.elided {
-            sig.generics.params.push(parse_quote!(#elided));
-            where_clause
-                .predicates
-                .push(parse_quote!(#elided: #lifetime));
-        }
-        sig.generics.params.push(parse_quote!(#lifetime));
-        if has_self {
-            let bound: Ident = match sig.inputs.iter().next() {
-                Some(FnArg::Receiver(Receiver {
-                    reference: Some(_),
-                    mutability: None,
-                    ..
-                })) => parse_quote!(Sync),
-                _ => parse_quote!(Send),
-            };
-            let assume_bound = match context {
-                Context::Trait { supertraits, .. } => {
-                    !has_default || has_bound(supertraits, &bound)
-                }
-                Context::Impl { .. } => true,
-            };
-            where_clause.predicates.push(if assume_bound || is_local {
-                parse_quote!(Self: #lifetime)
-            } else {
-                parse_quote!(Self: ::core::marker::#bound + #lifetime)
-            });
-        }
-    } else {
-        lifetime = parse_quote!('static);
-    };
+    }
+    for elided in lifetimes.elided {
+        sig.generics.params.push(parse_quote!(#elided));
+        where_clause
+            .predicates
+            .push(parse_quote!(#elided: 'async_trait));
+    }
+    sig.generics.params.push(parse_quote!('async_trait));
+    if has_self {
+        let bound: Ident = match sig.inputs.iter().next() {
+            Some(FnArg::Receiver(Receiver {
+                reference: Some(_),
+                mutability: None,
+                ..
+            })) => parse_quote!(Sync),
+            _ => parse_quote!(Send),
+        };
+        let assume_bound = match context {
+            Context::Trait { supertraits, .. } => {
+                !has_default || has_bound(supertraits, &bound)
+            }
+            Context::Impl { .. } => true,
+        };
+        where_clause.predicates.push(if assume_bound || is_local {
+            parse_quote!(Self: 'async_trait)
+        } else {
+            parse_quote!(Self: ::core::marker::#bound + 'async_trait)
+        });
+    }
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
         match arg {
@@ -220,9 +210,9 @@ fn transform_sig(
     }
 
     let bounds = if is_local {
-        quote!(#lifetime)
+        quote!('async_trait)
     } else {
-        quote!(::core::marker::Send + #lifetime)
+        quote!(::core::marker::Send + 'async_trait)
     };
 
     sig.output = parse_quote! {
