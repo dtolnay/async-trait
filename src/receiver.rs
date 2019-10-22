@@ -10,9 +10,9 @@ pub fn has_self_in_sig(sig: &mut Signature) -> bool {
     visitor.0
 }
 
-pub fn has_self_in_predicate(sig: &mut WherePredicate) -> bool {
+pub fn has_self_in_where_predicate(where_predicate: &mut WherePredicate) -> bool {
     let mut visitor = HasSelf(false);
-    visitor.visit_where_predicate_mut(sig);
+    visitor.visit_where_predicate_mut(where_predicate);
     visitor.0
 }
 

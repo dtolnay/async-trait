@@ -1,6 +1,6 @@
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
-use crate::receiver::{has_self_in_block, has_self_in_sig, has_self_in_predicate, ReplaceReceiver};
+use crate::receiver::{has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::mem;
@@ -275,7 +275,7 @@ fn transform_block(
              }| WhereClause {
                 predicates: predicates
                     .into_iter()
-                    .filter(|predicate| !has_self_in_predicate(&mut predicate.clone()))
+                    .filter(|predicate| !has_self_in_where_predicate(&mut predicate.clone()))
                     .collect(),
                 where_token,
             },
