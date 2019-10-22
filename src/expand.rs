@@ -1,6 +1,6 @@
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
-use crate::receiver::{has_self_in_block, has_self_in_sig, ReplaceReceiver};
+use crate::receiver::{has_self_in_block, has_self_in_sig, has_self_in_predicate, ReplaceReceiver};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::mem;
@@ -9,7 +9,7 @@ use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
     Path, Receiver, ReturnType, Signature, Token, TraitItem, Type, TypeParam, TypeParamBound,
-    WhereClause, WherePredicate,
+    WhereClause,
 };
 
 impl ToTokens for Item {
@@ -220,22 +220,6 @@ fn transform_sig(
     };
 }
 
-//
-// Returns true if provided `WherePredicate` is bound on Self.
-//
-fn is_self_bound_predicate(predicate: &WherePredicate) -> bool {
-    if let WherePredicate::Type(predicate_type) = predicate {
-        if let Type::Path(path) = &predicate_type.bounded_ty {
-            return path
-                .path
-                .segments
-                .iter()
-                .any(|value| value.ident == Ident::new("Self", Span::call_site()));
-        }
-    }
-    false
-}
-
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret {
 //         self + x
@@ -291,7 +275,7 @@ fn transform_block(
              }| WhereClause {
                 predicates: predicates
                     .into_iter()
-                    .filter(|predicate| !is_self_bound_predicate(predicate))
+                    .filter(|predicate| !has_self_in_predicate(&mut predicate.clone()))
                     .collect(),
                 where_token,
             },
