@@ -2,7 +2,10 @@ use proc_macro2::{Group, TokenStream, TokenTree};
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
-use syn::{Block, ExprPath, Ident, Item, Macro, Path, QSelf, Receiver, Signature, Type, TypePath, WherePredicate};
+use syn::{
+    Block, ExprPath, Ident, Item, Macro, Path, QSelf, Receiver, Signature, Type, TypePath,
+    WherePredicate,
+};
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
     let mut visitor = HasSelf(false);

@@ -1,6 +1,8 @@
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
-use crate::receiver::{has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver};
+use crate::receiver::{
+    has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver,
+};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::mem;
@@ -282,7 +284,7 @@ fn transform_block(
         );
     }
 
-    let fn_generics = mem::replace(&mut standalone.generics, outer_generics.clone());
+    let fn_generics = mem::replace(&mut standalone.generics, outer_generics);
 
     standalone.generics.params.extend(fn_generics.params);
 

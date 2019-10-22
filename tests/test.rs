@@ -140,7 +140,8 @@ pub async fn test_static_method_with_where_self_clause_in_trait() {
     #[async_trait]
     trait StaticWithWhereSelf
     where
-        Box<Self>: Sized, Self: Sized + Send,
+        Box<Self>: Sized,
+        Self: Sized + Send,
     {
         async fn get_one() -> u8 {
             1
