@@ -406,17 +406,10 @@ fn transform_block(
     replace.visit_block_mut(block);
 
     let brace = block.brace_token;
-
-    let types_specifier = if !types.is_empty() {
-        quote! { ::<#(#types),*> }
-    } else {
-        quote! {}
-    };
-
     *block = parse_quote!({
         #[allow(clippy::used_underscore_binding)]
         #standalone #block
-        Box::pin(#inner#types_specifier(#(#args),*))
+        Box::pin(#inner::<#(#types),*>(#(#args),*))
     });
 
     block.brace_token = brace;
