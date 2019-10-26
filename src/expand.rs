@@ -263,31 +263,25 @@ fn transform_block(
     let mut standalone = sig.clone();
     standalone.ident = inner.clone();
 
-    let mut outer_generics = match context {
+    let generics = match context {
         Context::Trait { generics, .. } => generics,
         Context::Impl { impl_generics, .. } => impl_generics,
-    }
-    .clone();
+    };
 
+    let mut outer_generics = generics.clone();
     if !has_self {
-        outer_generics.where_clause = outer_generics.where_clause.map(
-            |WhereClause {
-                 predicates,
-                 where_token,
-             }| WhereClause {
-                predicates: predicates
-                    .into_iter()
-                    .filter(|predicate| !has_self_in_where_predicate(&mut predicate.clone()))
-                    .collect(),
-                where_token,
-            },
-        );
+        if let Some(mut where_clause) = outer_generics.where_clause {
+            where_clause.predicates = where_clause
+                .predicates
+                .into_iter()
+                .filter(|pred| !has_self_in_where_predicate(&mut pred.clone()))
+                .collect();
+            outer_generics.where_clause = Some(where_clause);
+        }
     }
 
     let fn_generics = mem::replace(&mut standalone.generics, outer_generics);
-
     standalone.generics.params.extend(fn_generics.params);
-
     if let Some(where_clause) = fn_generics.where_clause {
         standalone
             .generics
