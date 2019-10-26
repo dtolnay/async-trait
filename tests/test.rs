@@ -136,25 +136,6 @@ pub async fn test_object_no_send() {
     object.f().await;
 }
 
-pub async fn test_static_method_with_where_self_clause_in_trait() {
-    #[async_trait]
-    trait StaticWithWhereSelf
-    where
-        Box<Self>: Sized,
-        Self: Sized + Send,
-    {
-        async fn get_one() -> u8 {
-            1
-        }
-    }
-
-    struct T {};
-
-    impl StaticWithWhereSelf for T {};
-
-    assert_eq!(T::get_one().await, 1);
-}
-
 #[async_trait]
 pub unsafe trait UnsafeTrait {}
 
@@ -412,4 +393,25 @@ pub mod issue42 {
             TokenContext
         }
     }
+}
+
+// https://github.com/dtolnay/async-trait/issues/44
+pub mod issue44 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait StaticWithWhereSelf
+    where
+        Box<Self>: Sized,
+        Self: Sized + Send,
+    {
+        async fn get_one() -> u8 {
+            1
+        }
+    }
+
+    pub struct Struct;
+
+    #[async_trait]
+    impl StaticWithWhereSelf for Struct {}
 }
