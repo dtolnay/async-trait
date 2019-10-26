@@ -6,7 +6,7 @@ Async trait methods
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/async-trait)
 
 The async/await language feature is on track for an initial round of
-stabilizations in Rust 1.38 (tracking issue: [rust-lang/rust#62149]), but this
+stabilizations in Rust 1.39 (tracking issue: [rust-lang/rust#62149]), but this
 does not include support for async fn in traits. Trying to include an async fn
 in a trait produces the following error:
 
