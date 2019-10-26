@@ -1,6 +1,8 @@
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
-use crate::receiver::{has_self_in_block, has_self_in_sig, ReplaceReceiver};
+use crate::receiver::{
+    has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver,
+};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::mem;
@@ -261,12 +263,31 @@ fn transform_block(
     let mut standalone = sig.clone();
     standalone.ident = inner.clone();
 
-    let outer_generics = match context {
+    let mut outer_generics = match context {
         Context::Trait { generics, .. } => generics,
         Context::Impl { impl_generics, .. } => impl_generics,
-    };
-    let fn_generics = mem::replace(&mut standalone.generics, outer_generics.clone());
+    }
+    .clone();
+
+    if !has_self {
+        outer_generics.where_clause = outer_generics.where_clause.map(
+            |WhereClause {
+                 predicates,
+                 where_token,
+             }| WhereClause {
+                predicates: predicates
+                    .into_iter()
+                    .filter(|predicate| !has_self_in_where_predicate(&mut predicate.clone()))
+                    .collect(),
+                where_token,
+            },
+        );
+    }
+
+    let fn_generics = mem::replace(&mut standalone.generics, outer_generics);
+
     standalone.generics.params.extend(fn_generics.params);
+
     if let Some(where_clause) = fn_generics.where_clause {
         standalone
             .generics
@@ -385,11 +406,19 @@ fn transform_block(
     replace.visit_block_mut(block);
 
     let brace = block.brace_token;
+
+    let types_specifier = if !types.is_empty() {
+        quote! { ::<#(#types),*> }
+    } else {
+        quote! {}
+    };
+
     *block = parse_quote!({
         #[allow(clippy::used_underscore_binding)]
         #standalone #block
-        Box::pin(#inner::<#(#types),*>(#(#args),*))
+        Box::pin(#inner#types_specifier(#(#args),*))
     });
+
     block.brace_token = brace;
 }
 

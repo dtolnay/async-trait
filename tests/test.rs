@@ -136,6 +136,25 @@ pub async fn test_object_no_send() {
     object.f().await;
 }
 
+pub async fn test_static_method_with_where_self_clause_in_trait() {
+    #[async_trait]
+    trait StaticWithWhereSelf
+    where
+        Box<Self>: Sized,
+        Self: Sized + Send,
+    {
+        async fn get_one() -> u8 {
+            1
+        }
+    }
+
+    struct T {};
+
+    impl StaticWithWhereSelf for T {};
+
+    assert_eq!(T::get_one().await, 1);
+}
+
 #[async_trait]
 pub unsafe trait UnsafeTrait {}
 
