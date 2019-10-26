@@ -23,6 +23,12 @@
 //!
 //! This crate provides an attribute macro to make async fn in traits work.
 //!
+//! Please refer to [*why async fn in traits are hard*][hard] for a deeper
+//! analysis of how this implementation differs from what the compiler and
+//! language hope to deliver in the future.
+//!
+//! [hard]: https://smallcultfollowing.com/babysteps/blog/2019/10/26/async-fn-in-traits-are-hard/
+//!
 //! <br>
 //!
 //! # Example
