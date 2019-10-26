@@ -274,7 +274,13 @@ fn transform_block(
             where_clause.predicates = where_clause
                 .predicates
                 .into_iter()
-                .filter(|pred| !has_self_in_where_predicate(&mut pred.clone()))
+                .filter_map(|mut pred| {
+                    if has_self_in_where_predicate(&mut pred) {
+                        None
+                    } else {
+                        Some(pred)
+                    }
+                })
                 .collect();
             outer_generics.where_clause = Some(where_clause);
         }
