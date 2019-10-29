@@ -415,3 +415,21 @@ pub mod issue44 {
     #[async_trait]
     impl StaticWithWhereSelf for Struct {}
 }
+
+// https://github.com/dtolnay/async-trait/issues/46
+pub mod issue46 {
+    use async_trait::async_trait;
+
+    macro_rules! implement_commands {
+        ($tyargs:tt : $ty:tt) => {
+            #[async_trait]
+            pub trait AsyncCommands: Sized {
+                async fn f<$tyargs: $ty>(&mut self, x: $tyargs) {
+                    self.f(x).await
+                }
+            }
+        };
+    }
+
+    implement_commands!(K: Send);
+}
