@@ -17,6 +17,10 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["full", "visit-mut"] }
 
+[dev-dependencies]
+rustversion = "1.0"
+trybuild = "1.0"
+
 [features]
 # Alternative implementation that produces worse error messages but potentially
 # works on old nightlies without https://github.com/rust-lang/rust/pull/61775 in

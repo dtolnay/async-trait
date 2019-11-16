@@ -1,0 +1,13 @@
+error[E0277]: `std::sync::MutexGuard<'_, ()>` cannot be sent between threads safely
+ --> $DIR/send-not-implemented.rs:6:1
+  |
+6 | #[async_trait]
+  | ^^^^^^^^^^^^^^ `std::sync::MutexGuard<'_, ()>` cannot be sent between threads safely
+  |
+  = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, ()>`
+  = note: required because it appears within the type `for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}`
+  = note: required because it appears within the type `[static generator@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6 _self:&Self for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}]`
+  = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6 _self:&Self for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}]>`
+  = note: required because it appears within the type `impl std::future::Future`
+  = note: required because it appears within the type `impl std::future::Future`
+  = note: required for the cast to the object type `dyn std::future::Future<Output = ()> + std::marker::Send`
