@@ -412,6 +412,22 @@ fn transform_block(
         Box::pin(#inner::<#(#types),*>(#(#args),*))
     });
 
+    // Make the span `Box::pin` be that of the block so that "Send is not implemented" errors point
+    // to the block and no the `#[async_trait]` attribute
+    if let Some(syn::Stmt::Expr(syn::Expr::Call(box_pin))) = block.stmts.last_mut() {
+        struct ReplaceSpan(Span);
+        impl VisitMut for ReplaceSpan {
+            fn visit_span_mut(&mut self, span: &mut Span) {
+                *span = self.0
+            }
+        }
+        let mut replace_span = ReplaceSpan(brace.span);
+        replace_span.visit_expr_mut(&mut box_pin.func);
+        box_pin.paren_token.span = brace.span;
+    } else {
+        unreachable!()
+    }
+
     block.brace_token = brace;
 }
 
