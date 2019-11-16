@@ -4,7 +4,7 @@ use crate::receiver::{
     has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
@@ -406,28 +406,12 @@ fn transform_block(
     replace.visit_block_mut(block);
 
     let brace = block.brace_token;
-    *block = parse_quote!({
+    let box_pin = quote_spanned!(brace.span=> {
         #[allow(clippy::used_underscore_binding)]
         #standalone #block
         Box::pin(#inner::<#(#types),*>(#(#args),*))
     });
-
-    // Make the span `Box::pin` be that of the block so that "Send is not implemented" errors point
-    // to the block and no the `#[async_trait]` attribute
-    if let Some(syn::Stmt::Expr(syn::Expr::Call(box_pin))) = block.stmts.last_mut() {
-        struct ReplaceSpan(Span);
-        impl VisitMut for ReplaceSpan {
-            fn visit_span_mut(&mut self, span: &mut Span) {
-                *span = self.0
-            }
-        }
-        let mut replace_span = ReplaceSpan(brace.span);
-        replace_span.visit_expr_mut(&mut box_pin.func);
-        box_pin.paren_token.span = brace.span;
-    } else {
-        unreachable!()
-    }
-
+    *block = parse_quote!(#box_pin);
     block.brace_token = brace;
 }
 
