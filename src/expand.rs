@@ -407,7 +407,10 @@ fn transform_block(
 
     let brace = block.brace_token;
     let box_pin = quote_spanned!(brace.span=> {
-        #[allow(clippy::used_underscore_binding)]
+        #[allow(
+            clippy::missing_docs_in_private_items,
+            clippy::used_underscore_binding,
+        )]
         #standalone #block
         Box::pin(#inner::<#(#types),*>(#(#args),*))
     });
