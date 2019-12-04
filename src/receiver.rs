@@ -3,8 +3,8 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    Block, ExprPath, Ident, Item, Macro, Path, QSelf, Receiver, Signature, Type, TypePath,
-    WherePredicate,
+    parse_quote, Block, Error, ExprPath, Ident, Item, Macro, Path, PathArguments, QSelf, Receiver,
+    Signature, Type, TypePath, WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -84,6 +84,18 @@ impl ReplaceReceiver {
 
         let first = &path.segments[0];
         if first.ident != "Self" || !first.arguments.is_empty() {
+            return;
+        }
+
+        if path.segments.len() == 1 {
+            if let Type::Path(with) = &self.with {
+                *path = with.path.clone();
+            } else {
+                let span = first.ident.span();
+                let msg = "Self type of this impl is unsupported in expression position";
+                let error = Error::new(span, msg).to_compile_error();
+                *path = parse_quote!(::core::marker::PhantomData::<#error>);
+            }
             return;
         }
 
