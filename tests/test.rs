@@ -433,3 +433,22 @@ pub mod issue46 {
 
     implement_commands!(K: Send);
 }
+
+// https://github.com/dtolnay/async-trait/issues/53
+pub mod issue53 {
+    use async_trait::async_trait;
+
+    struct Struct;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn foo();
+    }
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn foo() {
+            let _ = Self;
+        }
+    }
+}
