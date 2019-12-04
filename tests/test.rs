@@ -451,4 +451,11 @@ pub mod issue53 {
             let _ = Self;
         }
     }
+
+    #[async_trait]
+    impl Trait for std::marker::PhantomData<Struct> {
+        async fn foo() {
+            let _ = Self;
+        }
+    }
 }
