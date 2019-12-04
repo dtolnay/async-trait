@@ -90,6 +90,13 @@ impl ReplaceReceiver {
         if path.segments.len() == 1 {
             if let Type::Path(with) = &self.with {
                 *path = with.path.clone();
+                for segment in &mut path.segments {
+                    if let PathArguments::AngleBracketed(bracketed) = &mut segment.arguments {
+                        if bracketed.colon2_token.is_none() && !bracketed.args.is_empty() {
+                            bracketed.colon2_token = Some(Default::default());
+                        }
+                    }
+                }
             } else {
                 let span = first.ident.span();
                 let msg = "Self type of this impl is unsupported in expression position";
