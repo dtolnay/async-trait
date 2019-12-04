@@ -438,23 +438,41 @@ pub mod issue46 {
 pub mod issue53 {
     use async_trait::async_trait;
 
-    struct Struct;
-
-    #[async_trait]
-    pub trait Trait {
-        async fn foo();
+    pub struct Unit;
+    pub struct Tuple(u8);
+    pub struct Struct {
+        pub x: u8,
     }
 
     #[async_trait]
-    impl Trait for Struct {
-        async fn foo() {
+    pub trait Trait {
+        async fn method();
+    }
+
+    #[async_trait]
+    impl Trait for Unit {
+        async fn method() {
             let _ = Self;
         }
     }
 
     #[async_trait]
+    impl Trait for Tuple {
+        async fn method() {
+            let _ = Self(0);
+        }
+    }
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn method() {
+            let _ = Self { x: 0 };
+        }
+    }
+
+    #[async_trait]
     impl Trait for std::marker::PhantomData<Struct> {
-        async fn foo() {
+        async fn method() {
             let _ = Self;
         }
     }
