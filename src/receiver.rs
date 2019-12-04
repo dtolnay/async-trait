@@ -3,8 +3,8 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Block, Error, ExprPath, Ident, Item, Macro, Path, PathArguments, QSelf, Receiver,
-    Signature, Type, TypePath, WherePredicate,
+    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, Path, PathArguments,
+    QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -88,21 +88,7 @@ impl ReplaceReceiver {
         }
 
         if path.segments.len() == 1 {
-            if let Type::Path(with) = &self.with {
-                *path = with.path.clone();
-                for segment in &mut path.segments {
-                    if let PathArguments::AngleBracketed(bracketed) = &mut segment.arguments {
-                        if bracketed.colon2_token.is_none() && !bracketed.args.is_empty() {
-                            bracketed.colon2_token = Some(Default::default());
-                        }
-                    }
-                }
-            } else {
-                let span = first.ident.span();
-                let msg = "Self type of this impl is unsupported in expression position";
-                let error = Error::new(span, msg).to_compile_error();
-                *path = parse_quote!(::core::marker::PhantomData::<#error>);
-            }
+            self.self_to_expr_path(path);
             return;
         }
 
@@ -127,6 +113,24 @@ impl ReplaceReceiver {
 
             let segments = mem::replace(&mut path.segments, Punctuated::new());
             path.segments = segments.into_pairs().skip(1).collect();
+        }
+    }
+
+    fn self_to_expr_path(&self, path: &mut Path) {
+        if let Type::Path(with) = &self.with {
+            *path = with.path.clone();
+            for segment in &mut path.segments {
+                if let PathArguments::AngleBracketed(bracketed) = &mut segment.arguments {
+                    if bracketed.colon2_token.is_none() && !bracketed.args.is_empty() {
+                        bracketed.colon2_token = Some(Default::default());
+                    }
+                }
+            }
+        } else {
+            let span = path.segments[0].ident.span();
+            let msg = "Self type of this impl is unsupported in expression position";
+            let error = Error::new(span, msg).to_compile_error();
+            *path = parse_quote!(::core::marker::PhantomData::<#error>);
         }
     }
 }
@@ -160,6 +164,13 @@ impl VisitMut for ReplaceReceiver {
             self.self_to_qself_expr(&mut expr.qself, &mut expr.path);
         }
         visit_mut::visit_expr_path_mut(self, expr);
+    }
+
+    fn visit_expr_struct_mut(&mut self, expr: &mut ExprStruct) {
+        if expr.path.is_ident("Self") {
+            self.self_to_expr_path(&mut expr.path);
+        }
+        visit_mut::visit_expr_struct_mut(self, expr);
     }
 
     fn visit_item_mut(&mut self, _: &mut Item) {
