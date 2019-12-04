@@ -68,11 +68,13 @@ impl ReplaceReceiver {
     }
 
     fn self_to_qself_type(&self, qself: &mut Option<QSelf>, path: &mut Path) {
-        self.self_to_qself(qself, path, true);
+        let include_as_trait = true;
+        self.self_to_qself(qself, path, include_as_trait);
     }
 
     fn self_to_qself_expr(&self, qself: &mut Option<QSelf>, path: &mut Path) {
-        self.self_to_qself(qself, path, false);
+        let include_as_trait = false;
+        self.self_to_qself(qself, path, include_as_trait);
     }
 
     fn self_to_qself(&self, qself: &mut Option<QSelf>, path: &mut Path, include_as_trait: bool) {
