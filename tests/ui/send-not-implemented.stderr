@@ -1,4 +1,4 @@
-error[E0277]: `std::sync::MutexGuard<'_, ()>` cannot be sent between threads safely
+error: future cannot be sent between threads safely
   --> $DIR/send-not-implemented.rs:8:26
    |
 8  |       async fn test(&self) {
@@ -7,12 +7,16 @@ error[E0277]: `std::sync::MutexGuard<'_, ()>` cannot be sent between threads saf
 10 | |         let _guard = mutex.lock().unwrap();
 11 | |         f().await;
 12 | |     }
-   | |_____^ `std::sync::MutexGuard<'_, ()>` cannot be sent between threads safely
+   | |_____^ future returned by `__test` is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, ()>`
-   = note: required because it appears within the type `for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6 _self:&Self for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6 _self:&Self for<'r, 's> {&'r Self, std::sync::Mutex<()>, std::sync::MutexGuard<'s, ()>, impl std::future::Future, impl std::future::Future, ()}]>`
-   = note: required because it appears within the type `impl std::future::Future`
-   = note: required because it appears within the type `impl std::future::Future`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/send-not-implemented.rs:11:9
+   |
+10 |         let _guard = mutex.lock().unwrap();
+   |             ------ has type `std::sync::MutexGuard<'_, ()>`
+11 |         f().await;
+   |         ^^^^^^^^^ await occurs here, with `_guard` maybe used later
+12 |     }
+   |     - `_guard` is later dropped here
    = note: required for the cast to the object type `dyn std::future::Future<Output = ()> + std::marker::Send`
