@@ -405,6 +405,13 @@ fn transform_block(
     replace.visit_signature_mut(&mut standalone);
     replace.visit_block_mut(block);
 
+    let mut generics = types;
+    let consts = standalone
+        .generics
+        .const_params()
+        .map(|param| param.ident.clone());
+    generics.extend(consts);
+
     let brace = block.brace_token;
     let box_pin = quote_spanned!(brace.span=> {
         #[allow(
@@ -412,7 +419,7 @@ fn transform_block(
             clippy::used_underscore_binding,
         )]
         #standalone #block
-        Box::pin(#inner::<#(#types),*>(#(#args),*))
+        Box::pin(#inner::<#(#generics),*>(#(#args),*))
     });
     *block = parse_quote!(#box_pin);
     block.brace_token = brace;
