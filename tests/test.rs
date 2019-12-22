@@ -1,4 +1,4 @@
-#![cfg_attr(async_trait_nightly_testing, feature(specialization))]
+#![cfg_attr(async_trait_nightly_testing, feature(specialization, const_generics))]
 
 use async_trait::async_trait;
 
@@ -30,6 +30,9 @@ trait Trait {
     async fn generic_type_param<T: Send>(x: Box<T>) -> T {
         *x
     }
+
+    #[cfg(async_trait_nightly_testing)]
+    async fn generic_const<const C: usize>(_: [u8; C]) {}
 
     async fn calls(&self) {
         self.selfref().await;
@@ -64,6 +67,9 @@ impl Trait for Struct {
         *x
     }
 
+    #[cfg(async_trait_nightly_testing)]
+    async fn generic_const<const C: usize>(_: [u8; C]) {}
+
     async fn calls(&self) {
         self.selfref().await;
         Self::elided_lifetime("").await;
@@ -85,6 +91,8 @@ pub async fn test() {
     Struct::elided_lifetime("").await;
     Struct::explicit_lifetime("").await;
     Struct::generic_type_param(Box::new("")).await;
+    #[cfg(async_trait_nightly_testing)]
+    Struct::generic_const([0; 10]).await;
 
     let mut s = Struct;
     s.calls().await;
