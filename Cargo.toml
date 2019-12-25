@@ -22,7 +22,7 @@ syn = { version = "1.0", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 rustversion = "1.0"
-trybuild = "1.0"
+trybuild = { version = "1.0.19", features = ["diff"] }
 
 [features]
 # Alternative implementation that produces worse error messages but potentially
