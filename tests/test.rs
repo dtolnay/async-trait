@@ -32,7 +32,7 @@ trait Trait {
     }
 
     #[cfg(async_trait_nightly_testing)]
-    async fn generic_const<const C: usize>(_: [u8; C]) {}
+    async fn generic_const<T: Copy + Send, const C: usize>(a: [T; C]) -> T {a[0]}
 
     async fn calls(&self) {
         self.selfref().await;
@@ -68,7 +68,7 @@ impl Trait for Struct {
     }
 
     #[cfg(async_trait_nightly_testing)]
-    async fn generic_const<const C: usize>(_: [u8; C]) {}
+    async fn generic_const<T: Copy + Send, const C: usize>(a: [T; C]) -> T {a[0]}
 
     async fn calls(&self) {
         self.selfref().await;
