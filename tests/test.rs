@@ -31,9 +31,6 @@ trait Trait {
         *x
     }
 
-    #[cfg(async_trait_nightly_testing)]
-    async fn generic_const<T: Copy + Send, const C: usize>(a: [T; C]) -> T {a[0]}
-
     async fn calls(&self) {
         self.selfref().await;
         Self::elided_lifetime("").await;
@@ -67,9 +64,6 @@ impl Trait for Struct {
         *x
     }
 
-    #[cfg(async_trait_nightly_testing)]
-    async fn generic_const<T: Copy + Send, const C: usize>(a: [T; C]) -> T {a[0]}
-
     async fn calls(&self) {
         self.selfref().await;
         Self::elided_lifetime("").await;
@@ -91,8 +85,6 @@ pub async fn test() {
     Struct::elided_lifetime("").await;
     Struct::explicit_lifetime("").await;
     Struct::generic_type_param(Box::new("")).await;
-    #[cfg(async_trait_nightly_testing)]
-    Struct::generic_const([0; 10]).await;
 
     let mut s = Struct;
     s.calls().await;
@@ -483,5 +475,30 @@ pub mod issue53 {
         async fn method() {
             let _ = Self;
         }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/57
+#[cfg(async_trait_nightly_testing)]
+pub mod issue57 {
+    use crate::executor;
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait {
+        async fn const_generic<T: Send, const C: usize>(_: [T; C]) {}
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn const_generic<T: Send, const C: usize>(_: [T; C]) {}
+    }
+
+    #[test]
+    fn test() {
+        let fut = Struct::const_generic([0; 10]);
+        executor::block_on_simple(fut);
     }
 }
