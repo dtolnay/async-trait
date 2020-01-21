@@ -91,14 +91,14 @@ see unexpected borrow checker errors, type errors, or warnings.* There is no use
 of `unsafe` in the expanded code, so rest assured that if your code compiles it
 can't be that badly broken.
 
-- :thumbsup:&ensp;Self by value, by reference, by mut reference, or no self;
-- :thumbsup:&ensp;Any number of arguments, any return value;
-- :thumbsup:&ensp;Generic type parameters and lifetime parameters;
-- :thumbsup:&ensp;Associated types;
-- :thumbsup:&ensp;Having async and non-async functions in the same trait;
-- :thumbsup:&ensp;Default implementations provided by the trait;
-- :thumbsup:&ensp;Elided lifetimes;
-- :thumbsup:&ensp;Dyn-capable traits.
+- &#128077;&ensp;Self by value, by reference, by mut reference, or no self;
+- &#128077;&ensp;Any number of arguments, any return value;
+- &#128077;&ensp;Generic type parameters and lifetime parameters;
+- &#128077;&ensp;Associated types;
+- &#128077;&ensp;Having async and non-async functions in the same trait;
+- &#128077;&ensp;Default implementations provided by the trait;
+- &#128077;&ensp;Elided lifetimes;
+- &#128077;&ensp;Dyn-capable traits.
 
 <br>
 
