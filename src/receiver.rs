@@ -1,4 +1,5 @@
 use proc_macro2::{Group, TokenStream, TokenTree};
+use std::iter::FromIterator;
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
@@ -184,7 +185,7 @@ impl VisitMut for ReplaceReceiver {
         // `fn`, then `self` is more likely to refer to something other than the
         // outer function's self argument.
         if !contains_fn(i.tokens.clone()) {
-            i.tokens = fold_token_stream(i.tokens.clone());
+            fold_token_stream(&mut i.tokens);
         }
     }
 }
@@ -197,25 +198,35 @@ fn contains_fn(tokens: TokenStream) -> bool {
     })
 }
 
-fn fold_token_stream(tokens: TokenStream) -> TokenStream {
-    tokens
-        .into_iter()
-        .map(|tt| match tt {
+fn fold_token_stream(tokens: &mut TokenStream) -> bool {
+    let mut out = Vec::new();
+    let mut modified = false;
+    for tt in tokens.clone() {
+        match tt {
             TokenTree::Ident(mut ident) => {
-                prepend_underscore_to_self(&mut ident);
-                TokenTree::Ident(ident)
+                modified |= prepend_underscore_to_self(&mut ident);
+                out.push(TokenTree::Ident(ident));
             }
             TokenTree::Group(group) => {
-                let content = fold_token_stream(group.stream());
-                TokenTree::Group(Group::new(group.delimiter(), content))
+                let mut content = group.stream();
+                modified |= fold_token_stream(&mut content);
+                let mut new = Group::new(group.delimiter(), content);
+                new.set_span(group.span());
+                out.push(TokenTree::Group(new));
             }
-            other => other,
-        })
-        .collect()
+            other => out.push(other),
+        }
+    }
+    if modified {
+        *tokens = TokenStream::from_iter(out);
+    }
+    modified
 }
 
-fn prepend_underscore_to_self(ident: &mut Ident) {
-    if ident == "self" {
+fn prepend_underscore_to_self(ident: &mut Ident) -> bool {
+    let modified = ident == "self";
+    if modified {
         *ident = Ident::new("_self", ident.span());
     }
+    modified
 }
