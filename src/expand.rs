@@ -416,6 +416,7 @@ fn transform_block(
     let box_pin = quote_spanned!(brace.span=> {
         #[allow(
             clippy::missing_docs_in_private_items,
+            clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding,
         )]
         #standalone #block
