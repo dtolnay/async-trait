@@ -30,3 +30,6 @@ trybuild = { version = "1.0.19", features = ["diff"] }
 # some cases where the default implementation does not. This feature is semver
 # exempt and might get removed without notice in any patch version.
 support_old_nightly = []
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
