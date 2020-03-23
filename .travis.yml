@@ -1,11 +1,14 @@
 language: rust
 
+rust:
+  - beta
+  - stable
+  - 1.39.0
+
+script: cargo test
+
 matrix:
   include:
     - rust: nightly
       script: cargo test
       env: RUSTFLAGS='--cfg async_trait_nightly_testing'
-    - rust: beta
-      script: cargo test
-    - rust: stable
-      script: cargo check
