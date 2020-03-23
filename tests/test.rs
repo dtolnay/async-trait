@@ -502,3 +502,17 @@ pub mod issue57 {
         executor::block_on_simple(fut);
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/73
+pub mod issue73 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Example {
+        const ASSOCIATED: &'static str;
+
+        async fn associated(&self) {
+            println!("Associated:{}", Self::ASSOCIATED);
+        }
+    }
+}
