@@ -205,6 +205,7 @@ fn fold_token_stream(tokens: &mut TokenStream) -> bool {
         match tt {
             TokenTree::Ident(mut ident) => {
                 modified |= prepend_underscore_to_self(&mut ident);
+                modified |= replace_self_from_outer_function(&mut ident);
                 out.push(TokenTree::Ident(ident));
             }
             TokenTree::Group(group) => {
@@ -227,6 +228,14 @@ fn prepend_underscore_to_self(ident: &mut Ident) -> bool {
     let modified = ident == "self";
     if modified {
         *ident = Ident::new("_self", ident.span());
+    }
+    modified
+}
+
+fn replace_self_from_outer_function(ident: &mut Ident) -> bool {
+    let modified = ident == "Self";
+    if modified {
+        *ident = Ident::new("AsyncTrait", ident.span());
     }
     modified
 }
