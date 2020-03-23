@@ -1,5 +1,3 @@
-#![deny(redundant_semicolons)]
-
 use async_trait::async_trait;
 
 #[async_trait]

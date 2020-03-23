@@ -10,7 +10,7 @@ use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
-    Path, Receiver, ReturnType, Signature, Token, TraitItem, Type, TypeParam, TypeParamBound,
+    Path, Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParam, TypeParamBound,
     WhereClause,
 };
 
@@ -240,6 +240,12 @@ fn transform_block(
     has_self: bool,
     is_local: bool,
 ) {
+    if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
+        if block.stmts.len() == 1 && item.to_string() == ";" {
+            return;
+        }
+    }
+
     if cfg!(feature = "support_old_nightly") {
         let brace = block.brace_token;
         *block = parse_quote!({

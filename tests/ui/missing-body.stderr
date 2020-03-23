@@ -1,11 +1,7 @@
-error: unnecessary trailing semicolon
-  --> $DIR/missing-body.rs:14:22
+error: associated function in `impl` without body
+  --> $DIR/missing-body.rs:12:5
    |
-14 |     async fn f(&self);
-   |                      ^ help: remove this semicolon
-   |
-note: the lint level is defined here
-  --> $DIR/missing-body.rs:1:9
-   |
-1  | #![deny(redundant_semicolons)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+12 |     async fn f(&self);
+   |     ^^^^^^^^^^^^^^^^^-
+   |                      |
+   |                      help: provide a definition for the function: `{ <body> }`
