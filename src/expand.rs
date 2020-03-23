@@ -75,6 +75,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
+                        method.attrs.push(parse_quote!(#[must_use]));
                     }
                 }
             }
