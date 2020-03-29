@@ -516,3 +516,19 @@ pub mod issue73 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/68
+pub mod issue68 {
+    #[rustversion::since(1.40)] // procedural macros cannot expand to macro definitions in 1.39.
+    #[async_trait::async_trait]
+    pub trait Example {
+        async fn method(&self) {
+            macro_rules! t {
+                () => {{
+                    let _: &Self = self;
+                }};
+            }
+            t!();
+        }
+    }
+}
