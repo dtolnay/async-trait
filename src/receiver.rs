@@ -4,8 +4,8 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, ItemMacro, Macro, Path,
-    PathArguments, QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
+    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, Path, PathArguments,
+    QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -177,8 +177,8 @@ impl VisitMut for ReplaceReceiver {
     fn visit_item_mut(&mut self, i: &mut Item) {
         match i {
             // Visit `macro_rules!` because locally defined macros can refer to `self`.
-            Item::Macro(ItemMacro { mac, .. }) if mac.path.is_ident("macro_rules") => {
-                self.visit_macro_mut(mac)
+            Item::Macro(i) if i.mac.path.is_ident("macro_rules") => {
+                self.visit_macro_mut(&mut i.mac)
             }
             // Otherwise, do not recurse into nested items.
             _ => {}
