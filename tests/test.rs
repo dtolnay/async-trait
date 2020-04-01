@@ -503,20 +503,6 @@ pub mod issue57 {
     }
 }
 
-// https://github.com/dtolnay/async-trait/issues/73
-pub mod issue73 {
-    use async_trait::async_trait;
-
-    #[async_trait]
-    pub trait Example {
-        const ASSOCIATED: &'static str;
-
-        async fn associated(&self) {
-            println!("Associated:{}", Self::ASSOCIATED);
-        }
-    }
-}
-
 // https://github.com/dtolnay/async-trait/issues/68
 pub mod issue68 {
     #[rustversion::since(1.40)] // procedural macros cannot expand to macro definitions in 1.39.
@@ -529,6 +515,20 @@ pub mod issue68 {
                 }};
             }
             t!();
+        }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/73
+pub mod issue73 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Example {
+        const ASSOCIATED: &'static str;
+
+        async fn associated(&self) {
+            println!("Associated:{}", Self::ASSOCIATED);
         }
     }
 }
