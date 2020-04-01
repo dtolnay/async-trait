@@ -4,8 +4,8 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, Path, PathArguments,
-    QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
+    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, Path,
+    PathArguments, QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -32,6 +32,11 @@ impl VisitMut for HasSelf {
     fn visit_expr_path_mut(&mut self, expr: &mut ExprPath) {
         self.0 |= expr.path.segments[0].ident == "Self";
         visit_mut::visit_expr_path_mut(self, expr);
+    }
+
+    fn visit_pat_path_mut(&mut self, pat: &mut PatPath) {
+        self.0 |= pat.path.segments[0].ident == "Self";
+        visit_mut::visit_pat_path_mut(self, pat);
     }
 
     fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
@@ -172,6 +177,13 @@ impl VisitMut for ReplaceReceiver {
             self.self_to_expr_path(&mut expr.path);
         }
         visit_mut::visit_expr_struct_mut(self, expr);
+    }
+
+    fn visit_pat_path_mut(&mut self, pat: &mut PatPath) {
+        if pat.qself.is_none() {
+            self.self_to_qself_expr(&mut pat.qself, &mut pat.path);
+        }
+        visit_mut::visit_pat_path_mut(self, pat);
     }
 
     fn visit_item_mut(&mut self, i: &mut Item) {

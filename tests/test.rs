@@ -532,3 +532,25 @@ pub mod issue73 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/81
+pub mod issue81 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn handle(&self);
+    }
+
+    pub enum Enum {
+        Variant,
+    }
+
+    #[async_trait]
+    impl Trait for Enum {
+        async fn handle(&self) {
+            let Enum::Variant = self;
+            let Self::Variant = self;
+        }
+    }
+}
