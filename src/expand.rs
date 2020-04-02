@@ -429,9 +429,16 @@ fn transform_block(
         .map(|param| param.ident.clone());
     generics.extend(consts);
 
+    let allow_non_snake_case = if sig.ident != sig.ident.to_string().to_lowercase() {
+        Some(quote!(non_snake_case,))
+    } else {
+        None
+    };
+
     let brace = block.brace_token;
     let box_pin = quote_spanned!(brace.span=> {
         #[allow(
+            #allow_non_snake_case
             clippy::missing_docs_in_private_items,
             clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding,
