@@ -585,3 +585,40 @@ pub mod issue85 {
         async fn camelCase() {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/87
+pub mod issue87 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&self);
+    }
+
+    pub enum Tuple {
+        V(),
+    }
+
+    pub enum Struct {
+        V {},
+    }
+
+    #[async_trait]
+    impl Trait for Tuple {
+        async fn f(&self) {
+            let Tuple::V() = self;
+            let Self::V() = self;
+            let _ = Self::V;
+            let _ = Self::V();
+        }
+    }
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn f(&self) {
+            let Struct::V {} = self;
+            let Self::V {} = self;
+            let _ = Self::V {};
+        }
+    }
+}
