@@ -4,8 +4,9 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, Path,
-    PathArguments, QSelf, Receiver, Signature, Type, TypePath, WherePredicate,
+    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
+    PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Type, TypePath,
+    WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -123,14 +124,27 @@ impl ReplaceReceiver {
     }
 
     fn self_to_expr_path(&self, path: &mut Path) {
+        if path.leading_colon.is_some() {
+            return;
+        }
+
+        let first = &path.segments[0];
+        if first.ident != "Self" || !first.arguments.is_empty() {
+            return;
+        }
+
         if let Type::Path(with) = &self.with {
-            *path = with.path.clone();
+            let variant = mem::replace(path, with.path.clone());
             for segment in &mut path.segments {
                 if let PathArguments::AngleBracketed(bracketed) = &mut segment.arguments {
                     if bracketed.colon2_token.is_none() && !bracketed.args.is_empty() {
                         bracketed.colon2_token = Some(Default::default());
                     }
                 }
+            }
+            if variant.segments.len() > 1 {
+                path.segments.push_punct(Default::default());
+                path.segments.extend(variant.segments.into_pairs().skip(1));
             }
         } else {
             let span = path.segments[0].ident.span();
@@ -173,9 +187,7 @@ impl VisitMut for ReplaceReceiver {
     }
 
     fn visit_expr_struct_mut(&mut self, expr: &mut ExprStruct) {
-        if expr.path.is_ident("Self") {
-            self.self_to_expr_path(&mut expr.path);
-        }
+        self.self_to_expr_path(&mut expr.path);
         visit_mut::visit_expr_struct_mut(self, expr);
     }
 
@@ -184,6 +196,16 @@ impl VisitMut for ReplaceReceiver {
             self.self_to_qself_expr(&mut pat.qself, &mut pat.path);
         }
         visit_mut::visit_pat_path_mut(self, pat);
+    }
+
+    fn visit_pat_struct_mut(&mut self, pat: &mut PatStruct) {
+        self.self_to_expr_path(&mut pat.path);
+        visit_mut::visit_pat_struct_mut(self, pat);
+    }
+
+    fn visit_pat_tuple_struct_mut(&mut self, pat: &mut PatTupleStruct) {
+        self.self_to_expr_path(&mut pat.path);
+        visit_mut::visit_pat_tuple_struct_mut(self, pat);
     }
 
     fn visit_item_mut(&mut self, i: &mut Item) {
