@@ -179,6 +179,16 @@ fn transform_sig(
                 mutability: None,
                 ..
             })) => parse_quote!(Sync),
+            Some(FnArg::Typed(arg))
+                if match (arg.pat.as_ref(), arg.ty.as_ref()) {
+                    (Pat::Ident(pat), Type::Reference(ty)) => {
+                        pat.ident == "self" && ty.mutability.is_none()
+                    }
+                    _ => false,
+                } =>
+            {
+                parse_quote!(Sync)
+            }
             _ => parse_quote!(Send),
         };
         let assume_bound = match context {
