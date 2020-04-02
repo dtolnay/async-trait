@@ -554,3 +554,14 @@ pub mod issue81 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/83
+pub mod issue83 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&self) {}
+        async fn g(self: &Self) {}
+    }
+}
