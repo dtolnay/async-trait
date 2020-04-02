@@ -565,3 +565,23 @@ pub mod issue83 {
         async fn g(self: &Self) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/85
+pub mod issue85 {
+    #![deny(non_snake_case)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        #[allow(non_snake_case)]
+        async fn camelCase();
+    }
+
+    pub struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn camelCase() {}
+    }
+}
