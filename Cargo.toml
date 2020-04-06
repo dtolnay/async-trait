@@ -24,12 +24,5 @@ syn = { version = "1.0", features = ["full", "visit-mut"] }
 rustversion = "1.0"
 trybuild = { version = "1.0.19", features = ["diff"] }
 
-[features]
-# Alternative implementation that produces worse error messages but potentially
-# works on old nightlies without https://github.com/rust-lang/rust/pull/61775 in
-# some cases where the default implementation does not. This feature is semver
-# exempt and might get removed without notice in any patch version.
-support_old_nightly = []
-
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

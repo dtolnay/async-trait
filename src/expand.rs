@@ -256,15 +256,6 @@ fn transform_block(
         }
     }
 
-    if cfg!(feature = "support_old_nightly") {
-        let brace = block.brace_token;
-        *block = parse_quote!({
-            Box::pin(async move #block)
-        });
-        block.brace_token = brace;
-        return;
-    }
-
     let inner = format_ident!("__{}", sig.ident);
     let args = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
         FnArg::Receiver(_) => quote!(self),
