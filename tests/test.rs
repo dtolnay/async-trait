@@ -638,4 +638,14 @@ pub mod issue89 {
     impl Trait for Send + Sync {
         async fn f(&self) {}
     }
+
+    #[async_trait]
+    impl Trait for dyn Fn(i8) + Send + Sync {
+        async fn f(&self) {}
+    }
+
+    #[async_trait]
+    impl Trait for (dyn Fn(u8) + Send + Sync) {
+        async fn f(&self) {}
+    }
 }
