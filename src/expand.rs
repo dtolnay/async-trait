@@ -342,8 +342,17 @@ fn transform_block(
                     };
                 }
                 Context::Impl { receiver, .. } => {
+                    let mut ty = quote!(#receiver);
+                    if let Type::TraitObject(trait_object) = receiver {
+                        if trait_object.dyn_token.is_none() {
+                            ty = quote!(dyn #ty);
+                        }
+                        if trait_object.bounds.len() > 1 {
+                            ty = quote!((#ty));
+                        }
+                    }
                     *arg = parse_quote! {
-                        #under_self: &#lifetime #mutability #receiver
+                        #under_self: &#lifetime #mutability #ty
                     };
                 }
             }

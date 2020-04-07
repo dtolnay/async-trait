@@ -622,3 +622,30 @@ pub mod issue87 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/89
+pub mod issue89 {
+    #![allow(bare_trait_objects)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait {
+        async fn f(&self);
+    }
+
+    #[async_trait]
+    impl Trait for Send + Sync {
+        async fn f(&self) {}
+    }
+
+    #[async_trait]
+    impl Trait for dyn Fn(i8) + Send + Sync {
+        async fn f(&self) {}
+    }
+
+    #[async_trait]
+    impl Trait for (dyn Fn(u8) + Send + Sync) {
+        async fn f(&self) {}
+    }
+}
