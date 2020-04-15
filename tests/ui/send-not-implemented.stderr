@@ -14,7 +14,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/send-not-implemented.rs:11:9
    |
 10 |         let _guard = mutex.lock().unwrap();
-   |             ------ has type `std::sync::MutexGuard<'_, ()>`
+   |             ------ has type `std::sync::MutexGuard<'_, ()>` which is not `Send`
 11 |         f().await;
    |         ^^^^^^^^^ await occurs here, with `_guard` maybe used later
 12 |     }
