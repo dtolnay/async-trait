@@ -12,9 +12,6 @@ readme = "README.md"
 [lib]
 proc-macro = true
 
-[badges]
-travis-ci = { repository = "dtolnay/async-trait" }
-
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
