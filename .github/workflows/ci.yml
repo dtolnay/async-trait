@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  schedule: [cron: "40 1 * * *"]
+
+jobs:
+  test:
+    name: Rust ${{matrix.rust}}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [beta, stable, 1.39.0]
+        include:
+          - rust: nightly
+            rustflags: --cfg async_trait_nightly_testing
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{matrix.rust}}
+      - run: cargo test
+        env:
+          RUSTFLAGS: ${{matrix.rustflags}}
