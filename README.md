@@ -1,7 +1,7 @@
 Async trait methods
 ===================
 
-[![Build Status](https://api.travis-ci.com/dtolnay/async-trait.svg?branch=master)](https://travis-ci.com/dtolnay/async-trait)
+[![Build Status](https://img.shields.io/github/workflow/status/dtolnay/async-trait/CI/master)](https://github.com/dtolnay/async-trait/actions?query=branch%3Amaster)
 [![Latest Version](https://img.shields.io/crates/v/async-trait.svg)](https://crates.io/crates/async-trait)
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/async-trait)
 
