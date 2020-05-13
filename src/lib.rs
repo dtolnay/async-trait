@@ -8,12 +8,9 @@
 //!
 //! <h5>Type erasure for async trait methods</h5>
 //!
-//! The async/await language feature is on track for an initial round of
-//! stabilizations in Rust 1.39 (tracking issue: [rust-lang/rust#62149]), but
-//! this does not include support for async fn in traits. Trying to include an
-//! async fn in a trait produces the following error:
-//!
-//! [rust-lang/rust#62149]: https://github.com/rust-lang/rust/issues/62149
+//! The initial round of stabilizations for the async/await language feature in
+//! Rust 1.39 did not include support for async fn in traits. Trying to include
+//! an async fn in a trait produces the following error:
 //!
 //! ```compile_fail
 //! trait MyTrait {
