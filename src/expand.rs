@@ -1,3 +1,4 @@
+use crate::args::Args;
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{
@@ -55,7 +56,7 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool) {
+pub fn expand(input: &mut Item, args: Args) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -71,10 +72,10 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let mut has_self = has_self_in_sig(sig);
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block, has_self, is_local);
+                            transform_block(context, sig, block, has_self, args);
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        transform_sig(context, sig, has_self, has_default, args);
                         method.attrs.push(parse_quote!(#[must_use]));
                     }
                 }
@@ -92,8 +93,8 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block, has_self, is_local);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_block(context, sig, block, has_self, args);
+                        transform_sig(context, sig, has_self, false, args);
                     }
                 }
             }
@@ -119,7 +120,7 @@ fn transform_sig(
     sig: &mut Signature,
     has_self: bool,
     has_default: bool,
-    is_local: bool,
+    args: Args,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -195,7 +196,7 @@ fn transform_sig(
             Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
             Context::Impl { .. } => true,
         };
-        where_clause.predicates.push(if assume_bound || is_local {
+        where_clause.predicates.push(if assume_bound || args.local {
             parse_quote!(Self: 'async_trait)
         } else {
             parse_quote!(Self: ::core::marker::#bound + 'async_trait)
@@ -220,10 +221,16 @@ fn transform_sig(
         }
     }
 
-    let bounds = if is_local {
-        quote!('async_trait)
-    } else {
-        quote!(::core::marker::Send + 'async_trait)
+    let bounds = {
+        let mut bounds = TokenStream::new();
+        bounds.extend(quote! {'async_trait});
+        if !args.local {
+            bounds.extend(quote! { + ::core::marker::Send});
+        }
+        if args.sync {
+            bounds.extend(quote! { + ::core::marker::Sync});
+        }
+        bounds
     };
 
     sig.output = parse_quote! {
@@ -248,7 +255,7 @@ fn transform_block(
     sig: &mut Signature,
     block: &mut Block,
     has_self: bool,
-    is_local: bool,
+    macro_args: Args,
 ) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
@@ -395,7 +402,7 @@ fn transform_block(
         if has_self {
             let (_, generics, _) = generics.split_for_impl();
             let mut self_param: TypeParam = parse_quote!(AsyncTrait: ?Sized + #name #generics);
-            if !is_local {
+            if !macro_args.local {
                 self_param.bounds.extend(self_bound);
             }
             standalone

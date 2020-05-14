@@ -136,6 +136,22 @@ pub async fn test_object_no_send() {
     object.f().await;
 }
 
+pub async fn test_sync_marker() {
+    #[async_trait(Sync)]
+    trait Interface {
+        async fn f(&self);
+    }
+
+    #[async_trait(Sync)]
+    impl Interface for Struct {
+        async fn f(&self) {}
+    }
+
+    let object = &Struct as &dyn Interface;
+    let _future_is_sync: std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Sync>> =
+        object.f();
+}
+
 #[async_trait]
 pub unsafe trait UnsafeTrait {}
 
