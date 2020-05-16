@@ -19,10 +19,10 @@ syn = { version = "1.0", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 rustversion = "1.0"
-trybuild = { version = "1.0.19", features = ["diff"] }
-# Let's ensure we don't break tracing in a future release
-tracing = "0.1"
+tracing = "0.1.14"
+tracing-attributes = "0.1.8"
 tracing-futures = "0.2"
+trybuild = { version = "1.0.19", features = ["diff"] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
