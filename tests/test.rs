@@ -418,109 +418,16 @@ pub mod issue44 {
 
 // https://github.com/dtolnay/async-trait/issues/45
 pub mod issue45 {
-    use std::sync::{Arc, Mutex};
-    use std::sync::atomic::{AtomicU64, Ordering};
     use async_trait::async_trait;
-    use tracing::{instrument, Metadata, info};
-    use tracing::span::{Attributes, Record, Id};
-    use tracing::field::{Field, Visit};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::{Arc, Mutex};
     use tracing::event::Event;
+    use tracing::field::{Field, Visit};
+    use tracing::span::{Attributes, Id, Record};
+    use tracing::{info, instrument, Metadata};
     use tracing_futures;
 
     use crate::executor;
-
-    // a simple subscriber implementation to test the
-    // behavior of async-trait with tokio-rs/tracing.
-    // This implementation is not safe at all against
-    // race conditions, but it's not an issue here as
-    // we are only polling on a single future at a time
-    #[derive(Debug)]
-    struct SubscriberInner {
-        current_depth: AtomicU64,
-        // we assert that nested functions work (if the fix were
-        // to break, we woudl see two top-level functions instead
-        // of `bar` nested in `foo`
-        max_depth: AtomicU64,
-        max_span_id: AtomicU64,
-        // name of the variable / value / depth when the event was recorded
-        value: Mutex<Option<(String, u64, u64)>>
-    }
-
-    #[derive(Debug, Clone)]
-    struct Subscriber {
-        inner: Arc<SubscriberInner>
-    }
-
-    impl Subscriber {
-        fn new() -> Subscriber {
-            let inner = SubscriberInner {
-                current_depth: AtomicU64::new(0),
-                max_depth: AtomicU64::new(0),
-                max_span_id: AtomicU64::new(1),
-                value: Mutex::new(None)
-            };
-            Subscriber {
-                inner: Arc::new(inner)
-            }
-        }
-    }
-
-    struct U64Visitor(Option<(String, u64)>);
-
-    impl Visit for U64Visitor {
-        fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
-
-        fn record_u64(&mut self, field: &Field, value: u64) {
-            self.0 = Some((field.to_string(), value));
-        }
-    }
-
-    impl tracing::Subscriber for Subscriber {
-        fn enabled(&self, _: &Metadata) -> bool { true }
-        fn new_span(&self, _: &Attributes) -> Id {
-            Id::from_u64(self.inner.max_span_id.fetch_add(1, Ordering::AcqRel))
-        }
-        fn record(&self, _: &Id, _: &Record) {}
-        fn record_follows_from(&self, _: &Id, _: &Id) {}
-        fn event(&self, event: &Event) {
-            let mut visitor = U64Visitor(None);
-            event.record(&mut visitor);
-            if let Some((s, v)) = visitor.0 {
-                let current_depth = self.inner.current_depth.load(Ordering::Acquire);
-                *self.inner.value.lock().unwrap() = Some((s, v, current_depth));
-            }
-        }
-        fn enter(&self, _: &Id) {
-            let old_depth = self.inner.current_depth.fetch_add(1, Ordering::AcqRel);
-            if old_depth + 1 > self.inner.max_depth.load(Ordering::Acquire) {
-                self.inner.max_depth.fetch_add(1, Ordering::AcqRel);
-            }
-        }
-        fn exit(&self, _: &Id) {
-            self.inner.current_depth.fetch_sub(1, Ordering::AcqRel);
-        }
-    }
-
-
-    #[test]
-    fn tracing() {
-        let subscriber = Subscriber::new();
-        tracing::subscriber::with_default(subscriber.clone(),
-            || executor::block_on_simple(async {
-                let mut v = Impl(0);
-                v.foo(5).await;
-            }
-        ));
-        // Did we enter bar *insider* of foo ?
-        assert_eq!(subscriber.inner.max_depth.load(Ordering::Acquire), 2);
-        // Have we exited all spans ?
-        assert_eq!(subscriber.inner.current_depth.load(Ordering::Acquire), 0);
-        // Did we create only two spans ? (note: spans start at 1)
-        assert_eq!(subscriber.inner.max_span_id.load(Ordering::Acquire)-1, 2);
-        // Was the value recorded at the right depth (that is, in the right funtion) ?
-        // If so, was it the expected value ?
-        assert_eq!(*subscriber.inner.value.lock().unwrap(), Some(("val".into(), 5, 2)));
-    }
 
     #[async_trait]
     pub trait Parent {
@@ -546,12 +453,109 @@ pub mod issue45 {
 
     #[async_trait]
     impl Child for Impl {
-        // let's check that tracing detects the renaming of the `self` variable too
+        // let's check that tracing detects the renaming of the `self` variable too,
+        // as tracing::instrument is not going to be able to skip the `self`
+        // argument if it can't find it in the function signature
         #[instrument(skip(self))]
         async fn bar(&self) {
             info!(val = self.0);
-            // trace
         }
+    }
+
+    // a simple subscriber implementation to test the
+    // behavior of async-trait with tokio-rs/tracing.
+    // This implementation is not safe at all against
+    // race conditions, but it's not an issue here as
+    // we are only polling on a single future at a time
+    #[derive(Debug)]
+    struct SubscriberInner {
+        current_depth: AtomicU64,
+        // we assert that nested functions work (if the fix were
+        // to break, we woudl see two top-level functions instead
+        // of `bar` nested in `foo`
+        max_depth: AtomicU64,
+        max_span_id: AtomicU64,
+        // name of the variable / value / depth when the event was recorded
+        value: Mutex<Option<(String, u64, u64)>>,
+    }
+
+    #[derive(Debug, Clone)]
+    struct Subscriber {
+        inner: Arc<SubscriberInner>,
+    }
+
+    impl Subscriber {
+        fn new() -> Subscriber {
+            let inner = SubscriberInner {
+                current_depth: AtomicU64::new(0),
+                max_depth: AtomicU64::new(0),
+                max_span_id: AtomicU64::new(1),
+                value: Mutex::new(None),
+            };
+            Subscriber {
+                inner: Arc::new(inner),
+            }
+        }
+    }
+
+    struct U64Visitor(Option<(String, u64)>);
+
+    impl Visit for U64Visitor {
+        fn record_debug(&mut self, _: &Field, _: &dyn std::fmt::Debug) {}
+
+        fn record_u64(&mut self, field: &Field, value: u64) {
+            self.0 = Some((field.to_string(), value));
+        }
+    }
+
+    impl tracing::Subscriber for Subscriber {
+        fn enabled(&self, _: &Metadata) -> bool {
+            true
+        }
+        fn new_span(&self, _: &Attributes) -> Id {
+            Id::from_u64(self.inner.max_span_id.fetch_add(1, Ordering::AcqRel))
+        }
+        fn record(&self, _: &Id, _: &Record) {}
+        fn record_follows_from(&self, _: &Id, _: &Id) {}
+        fn event(&self, event: &Event) {
+            let mut visitor = U64Visitor(None);
+            event.record(&mut visitor);
+            if let Some((s, v)) = visitor.0 {
+                let current_depth = self.inner.current_depth.load(Ordering::Acquire);
+                *self.inner.value.lock().unwrap() = Some((s, v, current_depth));
+            }
+        }
+        fn enter(&self, _: &Id) {
+            let old_depth = self.inner.current_depth.fetch_add(1, Ordering::AcqRel);
+            if old_depth + 1 > self.inner.max_depth.load(Ordering::Acquire) {
+                self.inner.max_depth.fetch_add(1, Ordering::AcqRel);
+            }
+        }
+        fn exit(&self, _: &Id) {
+            self.inner.current_depth.fetch_sub(1, Ordering::AcqRel);
+        }
+    }
+
+    #[test]
+    fn tracing() {
+        // create the future outside of the subscriber, as no call to tracing
+        // should be made until the future is polled
+        let mut struct_impl = Impl(0);
+        let fut = struct_impl.foo(5);
+        let subscriber = Subscriber::new();
+        tracing::subscriber::with_default(subscriber.clone(), || executor::block_on_simple(fut));
+        // Did we enter bar *insider* of foo ?
+        assert_eq!(subscriber.inner.max_depth.load(Ordering::Acquire), 2);
+        // Have we exited all spans ?
+        assert_eq!(subscriber.inner.current_depth.load(Ordering::Acquire), 0);
+        // Did we create only two spans ? (note: spans start at 1, hence the "-1")
+        assert_eq!(subscriber.inner.max_span_id.load(Ordering::Acquire) - 1, 2);
+        // Was the value recorded at the right depth (that is, in the right funtion) ?
+        // If so, was it the expected value ?
+        assert_eq!(
+            *subscriber.inner.value.lock().unwrap(),
+            Some(("val".into(), 5, 2))
+        );
     }
 }
 
