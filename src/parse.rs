@@ -2,14 +2,6 @@ use proc_macro2::Span;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::{Attribute, ItemImpl, ItemTrait, Token};
 
-pub struct Nothing;
-
-impl Parse for Nothing {
-    fn parse(_input: ParseStream) -> Result<Self> {
-        Ok(Nothing)
-    }
-}
-
 pub enum Item {
     Trait(ItemTrait),
     Impl(ItemImpl),
