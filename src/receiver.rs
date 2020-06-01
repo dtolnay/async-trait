@@ -1,4 +1,5 @@
 use proc_macro2::{Group, TokenStream, TokenTree};
+use quote::quote;
 use std::iter::FromIterator;
 use std::mem;
 use syn::punctuated::Punctuated;
@@ -153,6 +154,55 @@ impl ReplaceReceiver {
             *path = parse_quote!(::core::marker::PhantomData::<#error>);
         }
     }
+
+    fn visit_token_stream(&self, tokens: &mut TokenStream) -> bool {
+        let mut out = Vec::new();
+        let mut modified = false;
+        let mut iter = tokens.clone().into_iter().peekable();
+        while let Some(tt) = iter.next() {
+            match tt {
+                TokenTree::Ident(mut ident) => {
+                    modified |= prepend_underscore_to_self(&mut ident);
+                    if ident == "Self" {
+                        modified = true;
+                        if self.as_trait.is_none() {
+                            let ident = Ident::new("AsyncTrait", ident.span());
+                            out.push(TokenTree::Ident(ident));
+                        } else {
+                            let self_ty = &self.with;
+                            match iter.peek() {
+                                Some(TokenTree::Punct(p)) if p.as_char() == ':' => {
+                                    let next = iter.next().unwrap();
+                                    match iter.peek() {
+                                        Some(TokenTree::Punct(p)) if p.as_char() == ':' => {
+                                            out.extend(quote!(<#self_ty>))
+                                        }
+                                        _ => out.extend(quote!(#self_ty)),
+                                    }
+                                    out.push(next);
+                                }
+                                _ => out.extend(quote!(#self_ty)),
+                            }
+                        }
+                    } else {
+                        out.push(TokenTree::Ident(ident));
+                    }
+                }
+                TokenTree::Group(group) => {
+                    let mut content = group.stream();
+                    modified |= self.visit_token_stream(&mut content);
+                    let mut new = Group::new(group.delimiter(), content);
+                    new.set_span(group.span());
+                    out.push(TokenTree::Group(new));
+                }
+                other => out.push(other),
+            }
+        }
+        if modified {
+            *tokens = TokenStream::from_iter(out);
+        }
+        modified
+    }
 }
 
 impl VisitMut for ReplaceReceiver {
@@ -226,7 +276,7 @@ impl VisitMut for ReplaceReceiver {
         // `fn`, then `self` is more likely to refer to something other than the
         // outer function's self argument.
         if !contains_fn(i.tokens.clone()) {
-            fold_token_stream(&mut i.tokens);
+            self.visit_token_stream(&mut i.tokens);
         }
     }
 }
@@ -239,44 +289,10 @@ fn contains_fn(tokens: TokenStream) -> bool {
     })
 }
 
-fn fold_token_stream(tokens: &mut TokenStream) -> bool {
-    let mut out = Vec::new();
-    let mut modified = false;
-    for tt in tokens.clone() {
-        match tt {
-            TokenTree::Ident(mut ident) => {
-                modified |= prepend_underscore_to_self(&mut ident);
-                modified |= replace_self_from_outer_function(&mut ident);
-                out.push(TokenTree::Ident(ident));
-            }
-            TokenTree::Group(group) => {
-                let mut content = group.stream();
-                modified |= fold_token_stream(&mut content);
-                let mut new = Group::new(group.delimiter(), content);
-                new.set_span(group.span());
-                out.push(TokenTree::Group(new));
-            }
-            other => out.push(other),
-        }
-    }
-    if modified {
-        *tokens = TokenStream::from_iter(out);
-    }
-    modified
-}
-
 fn prepend_underscore_to_self(ident: &mut Ident) -> bool {
     let modified = ident == "self";
     if modified {
         *ident = Ident::new("_self", ident.span());
-    }
-    modified
-}
-
-fn replace_self_from_outer_function(ident: &mut Ident) -> bool {
-    let modified = ident == "Self";
-    if modified {
-        *ident = Ident::new("AsyncTrait", ident.span());
     }
     modified
 }

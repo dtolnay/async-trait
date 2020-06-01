@@ -785,3 +785,85 @@ pub mod issue89 {
         async fn f(&self) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/92
+pub mod issue92 {
+    use async_trait::async_trait;
+
+    macro_rules! mac {
+        ($($tt:tt)*) => {
+            $($tt)*
+        };
+    }
+
+    pub struct Struct<T> {
+        _x: T,
+    }
+
+    impl<T> Struct<T> {
+        const ASSOCIATED1: &'static str = "1";
+        async fn associated1() {}
+    }
+
+    #[async_trait]
+    pub trait Trait
+    where
+        mac!(Self): Send,
+    {
+        const ASSOCIATED2: &'static str;
+        type Associated2;
+
+        #[allow(path_statements)]
+        async fn associated2(&self) {
+            // trait items
+            mac!(let _: Self::Associated2;);
+            mac!(let _: <Self>::Associated2;);
+            mac!(let _: <Self as Trait>::Associated2;);
+            mac!(Self::ASSOCIATED2;);
+            mac!(<Self>::ASSOCIATED2;);
+            mac!(<Self as Trait>::ASSOCIATED2;);
+            mac!(let _ = Self::associated2(self););
+            mac!(let _ = <Self>::associated2(self););
+            mac!(let _ = <Self as Trait>::associated2(self););
+        }
+    }
+
+    #[async_trait]
+    impl<T: Send + Sync> Trait for Struct<T>
+    where
+        mac!(Self): Send,
+    {
+        const ASSOCIATED2: &'static str = "2";
+        type Associated2 = ();
+
+        #[allow(path_statements)]
+        async fn associated2(&self) {
+            // inherent items
+            mac!(Self::ASSOCIATED1;);
+            mac!(<Self>::ASSOCIATED1;);
+            mac!(let _ = Self::associated1(););
+            mac!(let _ = <Self>::associated1(););
+
+            // trait items
+            mac!(let _: <Self as Trait>::Associated2;);
+            mac!(Self::ASSOCIATED2;);
+            mac!(<Self>::ASSOCIATED2;);
+            mac!(<Self as Trait>::ASSOCIATED2;);
+            mac!(let _ = Self::associated2(self););
+            mac!(let _ = <Self>::associated2(self););
+            mac!(let _ = <Self as Trait>::associated2(self););
+        }
+    }
+
+    pub struct Unit;
+
+    #[async_trait]
+    impl Trait for Unit {
+        const ASSOCIATED2: &'static str = "2";
+        type Associated2 = ();
+
+        async fn associated2(&self) {
+            mac!(let Self: Self = *self;);
+        }
+    }
+}
