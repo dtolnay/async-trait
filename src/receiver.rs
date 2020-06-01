@@ -1,4 +1,4 @@
-use proc_macro2::{Group, TokenStream, TokenTree};
+use proc_macro2::{Group, Spacing, TokenStream, TokenTree};
 use quote::quote;
 use std::iter::FromIterator;
 use std::mem;
@@ -171,7 +171,9 @@ impl ReplaceReceiver {
                         } else {
                             let self_ty = &self.with;
                             match iter.peek() {
-                                Some(TokenTree::Punct(p)) if p.as_char() == ':' => {
+                                Some(TokenTree::Punct(p))
+                                    if p.as_char() == ':' && p.spacing() == Spacing::Joint =>
+                                {
                                     let next = iter.next().unwrap();
                                     match iter.peek() {
                                         Some(TokenTree::Punct(p)) if p.as_char() == ':' => {
