@@ -1,5 +1,6 @@
+use crate::respan::respan;
 use proc_macro2::{Group, Spacing, Span, TokenStream, TokenTree};
-use quote::{quote, ToTokens};
+use quote::quote;
 use std::iter::FromIterator;
 use std::mem;
 use syn::punctuated::Punctuated;
@@ -76,11 +77,7 @@ impl ReplaceReceiver {
     }
 
     fn self_ty(&self, span: Span) -> Type {
-        let mut tokens = self.with.to_token_stream().into_iter().collect::<Vec<_>>();
-        for token in tokens.iter_mut() {
-            token.set_span(span);
-        }
-        syn::parse2(tokens.into_iter().collect()).unwrap()
+        respan(&self.with, span)
     }
 
     fn self_to_qself_type(&self, qself: &mut Option<QSelf>, path: &mut Path) {
