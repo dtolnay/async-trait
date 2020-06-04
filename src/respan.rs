@@ -12,9 +12,11 @@ where
 }
 
 fn respan_tokens(tokens: TokenStream, span: Span) -> TokenStream {
-    let mut tokens = tokens.into_iter().collect::<Vec<_>>();
-    for token in tokens.iter_mut() {
-        token.set_span(span);
-    }
-    tokens.into_iter().collect()
+    tokens
+        .into_iter()
+        .map(|mut token| {
+            token.set_span(span);
+            token
+        })
+        .collect()
 }
