@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-pub struct Struct {}
+pub struct S {}
 
 #[async_trait]
 pub trait Trait {
@@ -8,7 +8,7 @@ pub trait Trait {
 }
 
 #[async_trait]
-impl Trait for Struct {
+impl Trait for S {
     async fn method(self) {
         let _: () = self;
         let _: Self = Self;

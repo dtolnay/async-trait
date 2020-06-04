@@ -1,28 +1,16 @@
-error[E0423]: expected value, found struct `Struct`
+error[E0423]: expected value, found struct `S`
   --> $DIR/self-span.rs:14:23
    |
-3  | pub struct Struct {}
-   | -------------------- `Struct` defined here
+3  | pub struct S {}
+   | --------------- `S` defined here
 ...
 14 |         let _: Self = Self;
-   |                       ^^^^ did you mean `Struct { /* fields */ }`?
-   |
-help: consider importing one of these items instead
-   |
-1  | use syn::Data::Struct;
-   |
-1  | use syn::Expr::Struct;
-   |
-1  | use syn::Item::Struct;
-   |
-1  | use syn::Pat::Struct;
-   |
-     and 1 other candidate
+   |                       ^^^^ did you mean `S { /* fields */ }`?
 
 error[E0308]: mismatched types
   --> $DIR/self-span.rs:13:21
    |
 13 |         let _: () = self;
-   |                --   ^^^^ expected `()`, found struct `Struct`
+   |                --   ^^^^ expected `()`, found struct `S`
    |                |
    |                expected due to this
