@@ -1,12 +1,12 @@
 use crate::respan::respan;
 use proc_macro2::{Group, Spacing, Span, TokenStream, TokenTree};
-use quote::quote;
+use quote::{quote, quote_spanned};
 use std::iter::FromIterator;
 use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
+    parse_quote, token, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
     PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Type, TypePath,
     WherePredicate,
 };
@@ -105,12 +105,13 @@ impl ReplaceReceiver {
             return;
         }
 
+        let span = first.ident.span();
         *qself = Some(QSelf {
-            lt_token: Default::default(),
-            ty: Box::new(self.self_ty(first.ident.span())),
+            lt_token: token::Lt(span),
+            ty: Box::new(self.self_ty(span)),
             position: 0,
             as_token: None,
-            gt_token: Default::default(),
+            gt_token: token::Gt(span),
         });
 
         if include_as_trait && self.as_trait.is_some() {
@@ -182,7 +183,8 @@ impl ReplaceReceiver {
                                     let next = iter.next().unwrap();
                                     match iter.peek() {
                                         Some(TokenTree::Punct(p)) if p.as_char() == ':' => {
-                                            out.extend(quote!(<#self_ty>))
+                                            let span = ident.span();
+                                            out.extend(quote_spanned!(span=> <#self_ty>));
                                         }
                                         _ => out.extend(quote!(#self_ty)),
                                     }
