@@ -3,7 +3,7 @@ use async_trait::async_trait;
 pub struct S {}
 
 pub enum E {
-    V {}
+    V {},
 }
 
 #[async_trait]
