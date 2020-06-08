@@ -570,9 +570,7 @@ pub mod issue46 {
     implement_commands_workaround!(K: Send);
 
     macro_rules! implement_commands {
-        (
-            $tyargs:ident : $ty:ident
-        ) => {
+        ($tyargs:ident : $ty:ident) => {
             #[async_trait]
             pub trait AsyncCommands2: Sized {
                 async fn f<$tyargs: $ty>(&mut self, x: $tyargs) {
@@ -582,7 +580,7 @@ pub mod issue46 {
         };
     }
 
-    implement_commands! { K: Send }
+    implement_commands!(K: Send);
 }
 
 // https://github.com/dtolnay/async-trait/issues/53
@@ -883,6 +881,7 @@ pub mod issue92 {
     }
 }
 
+// https://github.com/dtolnay/async-trait/issues/104
 mod issue104 {
     use async_trait::async_trait;
 
@@ -892,7 +891,7 @@ mod issue104 {
     }
 
     macro_rules! impl_t1 {
-        ($ty: ty, $id: expr) => {
+        ($ty:ty, $id:expr) => {
             #[async_trait]
             impl T1 for $ty {
                 async fn id(&self) -> i32 {
