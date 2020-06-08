@@ -6,8 +6,8 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, token, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
-    PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Type, TypePath,
+    parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
+    PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Token, Type, TypePath,
     WherePredicate,
 };
 
@@ -107,11 +107,11 @@ impl ReplaceReceiver {
 
         let span = first.ident.span();
         *qself = Some(QSelf {
-            lt_token: token::Lt(span),
+            lt_token: Token![<](span),
             ty: Box::new(self.self_ty(span)),
             position: 0,
             as_token: None,
-            gt_token: token::Gt(span),
+            gt_token: Token![>](span),
         });
 
         if include_as_trait && self.as_trait.is_some() {
