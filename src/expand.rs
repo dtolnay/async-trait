@@ -258,7 +258,7 @@ fn transform_block(
 
     let inner = format_ident!("__{}", sig.ident);
     let args = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
-        FnArg::Receiver(_) => quote!(self),
+        FnArg::Receiver(Receiver { self_token, .. }) => quote!(#self_token),
         FnArg::Typed(arg) => {
             if let Pat::Ident(PatIdent { ident, .. }) = &*arg.pat {
                 quote!(#ident)

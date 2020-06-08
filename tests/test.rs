@@ -556,10 +556,10 @@ pub mod issue45 {
 pub mod issue46 {
     use async_trait::async_trait;
 
-    macro_rules! implement_commands {
+    macro_rules! implement_commands_workaround {
         ($tyargs:tt : $ty:tt) => {
             #[async_trait]
-            pub trait AsyncCommands: Sized {
+            pub trait AsyncCommands1: Sized {
                 async fn f<$tyargs: $ty>(&mut self, x: $tyargs) {
                     self.f(x).await
                 }
@@ -567,7 +567,22 @@ pub mod issue46 {
         };
     }
 
-    implement_commands!(K: Send);
+    implement_commands_workaround!(K: Send);
+
+    macro_rules! implement_commands {
+        (
+            $tyargs:ident : $ty:ident
+        ) => {
+            #[async_trait]
+            pub trait AsyncCommands2: Sized {
+                async fn f<$tyargs: $ty>(&mut self, x: $tyargs) {
+                    self.f(x).await
+                }
+            }
+        };
+    }
+
+    implement_commands! { K: Send }
 }
 
 // https://github.com/dtolnay/async-trait/issues/53
@@ -866,4 +881,28 @@ pub mod issue92 {
             mac!(let Self: Self = *self;);
         }
     }
+}
+
+mod issue104 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait T1 {
+        async fn id(&self) -> i32;
+    }
+
+    macro_rules! impl_t1 {
+        ($ty: ty, $id: expr) => {
+            #[async_trait]
+            impl T1 for $ty {
+                async fn id(&self) -> i32 {
+                    $id
+                }
+            }
+        };
+    }
+
+    struct Foo;
+
+    impl_t1!(Foo, 1);
 }
