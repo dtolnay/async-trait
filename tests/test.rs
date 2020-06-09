@@ -933,7 +933,7 @@ mod issue106 {
             F: FnOnce(&Self::ThreadPool) -> Fut + Send,
             Fut: Future<Output = T> + 'static,
         {
-            (*self).spawn(work).await
+            (**self).spawn(work).await
         }
     }
 }

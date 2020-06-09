@@ -81,12 +81,12 @@ pub fn expand(input: &mut Item, is_local: bool) {
             }
         }
         Item::Impl(input) => {
-            let mut lifetimes = CollectLifetimes::with("'impl_life");
+            let mut lifetimes = CollectLifetimes::new("'impl");
             lifetimes.visit_type_mut(&mut *input.self_ty);
             lifetimes.visit_path_mut(&mut input.trait_.as_mut().unwrap().1);
             let params = &input.generics.params;
             let elided = lifetimes.elided;
-            input.generics.params = parse_quote!( #(#elided,)* #params );
+            input.generics.params = parse_quote!(#(#elided,)* #params);
 
             let context = Context::Impl {
                 impl_generics: &input.generics,
@@ -135,7 +135,7 @@ fn transform_sig(
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
-    let mut lifetimes = CollectLifetimes::new();
+    let mut lifetimes = CollectLifetimes::new("'life");
     for arg in sig.inputs.iter_mut() {
         match arg {
             FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
