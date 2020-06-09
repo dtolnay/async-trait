@@ -905,3 +905,35 @@ mod issue104 {
 
     impl_t1!(Foo, 1);
 }
+
+// https://github.com/dtolnay/async-trait/issues/106
+mod issue106 {
+    use async_trait::async_trait;
+    use std::future::Future;
+
+    #[async_trait]
+    pub trait ProcessPool: Send + Sync {
+        type ThreadPool;
+
+        async fn spawn<F, Fut, T>(&self, work: F) -> T
+        where
+            F: FnOnce(&Self::ThreadPool) -> Fut + Send,
+            Fut: Future<Output = T> + 'static;
+    }
+
+    #[async_trait]
+    impl<P: ?Sized> ProcessPool for &P
+    where
+        P: ProcessPool,
+    {
+        type ThreadPool = P::ThreadPool;
+
+        async fn spawn<F, Fut, T>(&self, work: F) -> T
+        where
+            F: FnOnce(&Self::ThreadPool) -> Fut + Send,
+            Fut: Future<Output = T> + 'static,
+        {
+            (*self).spawn(work).await
+        }
+    }
+}
