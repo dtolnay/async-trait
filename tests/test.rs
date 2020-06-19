@@ -826,7 +826,7 @@ pub mod issue92 {
         const ASSOCIATED2: &'static str;
         type Associated2;
 
-        #[allow(path_statements)]
+        #[allow(path_statements, clippy::no_effect)]
         async fn associated2(&self) {
             // trait items
             mac!(let _: Self::Associated2;);
@@ -849,7 +849,7 @@ pub mod issue92 {
         const ASSOCIATED2: &'static str = "2";
         type Associated2 = ();
 
-        #[allow(path_statements)]
+        #[allow(path_statements, clippy::no_effect)]
         async fn associated2(&self) {
             // inherent items
             mac!(Self::ASSOCIATED1;);
