@@ -447,6 +447,8 @@ fn transform_block(
         #[allow(
             #allow_non_snake_case
             clippy::missing_docs_in_private_items,
+            clippy::needless_lifetimes,
+            clippy::ptr_arg,
             clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding,
         )]
