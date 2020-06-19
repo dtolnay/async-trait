@@ -942,9 +942,10 @@ mod issue106 {
 mod issue110 {
     #![deny(clippy::all)]
 
+    use async_trait::async_trait;
     use std::marker::PhantomData;
 
-    #[async_trait::async_trait]
+    #[async_trait]
     pub trait Loader {
         async fn load(&self, key: &str);
     }
@@ -953,7 +954,7 @@ mod issue110 {
         marker: PhantomData<&'a ()>,
     }
 
-    #[async_trait::async_trait]
+    #[async_trait]
     impl Loader for AwsEc2MetadataLoader<'_> {
         async fn load(&self, _key: &str) {}
     }
