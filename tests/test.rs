@@ -937,3 +937,24 @@ mod issue106 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/110
+mod issue110 {
+    #![deny(clippy::all)]
+
+    use std::marker::PhantomData;
+
+    #[async_trait::async_trait]
+    pub trait Loader {
+        async fn load(&self, key: &str);
+    }
+
+    pub struct AwsEc2MetadataLoader<'a> {
+        marker: PhantomData<&'a ()>,
+    }
+
+    #[async_trait::async_trait]
+    impl Loader for AwsEc2MetadataLoader<'_> {
+        async fn load(&self, _key: &str) {}
+    }
+}
