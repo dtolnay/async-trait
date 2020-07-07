@@ -24,13 +24,15 @@ impl VisitMut for HasAsyncLifetime {
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
+    pub name: &'static str,
 }
 
 impl CollectLifetimes {
-    pub fn new() -> Self {
+    pub fn new(name: &'static str) -> Self {
         CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
+            name,
         }
     }
 
@@ -50,7 +52,7 @@ impl CollectLifetimes {
     }
 
     fn next_lifetime(&mut self) -> Lifetime {
-        let name = format!("'life{}", self.elided.len());
+        let name = format!("{}{}", self.name, self.elided.len());
         let life = Lifetime::new(&name, Span::call_site());
         self.elided.push(life.clone());
         life

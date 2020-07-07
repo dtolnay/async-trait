@@ -1,6 +1,6 @@
 [package]
 name = "async-trait-with-sync"
-version = "0.1.31"
+version = "0.1.36"
 # Note: Original author is David Tolnay, however to avoid publishing crates in their name, this
 #       author line has been replaced.
 # authors = ["David Tolnay <dtolnay@gmail.com>"]
@@ -22,6 +22,9 @@ syn = { version = "1.0", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 rustversion = "1.0"
+tracing = "0.1.14"
+tracing-attributes = "0.1.8"
+tracing-futures = "0.2"
 trybuild = { version = "1.0.19", features = ["diff"] }
 
 [package.metadata.docs.rs]

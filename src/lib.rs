@@ -310,6 +310,7 @@ mod expand;
 mod lifetime;
 mod parse;
 mod receiver;
+mod respan;
 
 use crate::args::Args;
 use crate::expand::expand;
