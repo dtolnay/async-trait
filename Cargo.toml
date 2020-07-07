@@ -1,12 +1,15 @@
 [package]
-name = "async-trait"
+name = "async-trait-with-sync"
 version = "0.1.31"
-authors = ["David Tolnay <dtolnay@gmail.com>"]
+# Note: Original author is David Tolnay, however to avoid publishing crates in their name, this
+#       author line has been replaced.
+# authors = ["David Tolnay <dtolnay@gmail.com>"]
+authors = ["49nord GmbH <hello@49nord.de>", "Christian Schwarz <me@cschwarz.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Type erasure for async trait methods"
-repository = "https://github.com/dtolnay/async-trait"
-documentation = "https://docs.rs/async-trait"
+repository = "https://github.com/49nord/async-trait"
+documentation = "https://docs.rs/async-trait-with-sync"
 readme = "README.md"
 
 [lib]
