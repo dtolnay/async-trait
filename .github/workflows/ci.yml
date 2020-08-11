@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, stable, 1.39.0]
+        rust: [beta, stable, 1.40.0]
         include:
           - rust: nightly
             rustflags: --cfg async_trait_nightly_testing
@@ -24,6 +24,14 @@ jobs:
       - run: cargo test
         env:
           RUSTFLAGS: ${{matrix.rustflags}}
+
+  msrv:
+    name: Rust 1.39.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@1.39.0
+      - run: cargo check
 
   clippy:
     name: Clippy
