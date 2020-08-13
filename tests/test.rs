@@ -706,6 +706,8 @@ pub mod issue81 {
 
 // https://github.com/dtolnay/async-trait/issues/83
 pub mod issue83 {
+    #![allow(clippy::needless_arbitrary_self_type)]
+
     use async_trait::async_trait;
 
     #[async_trait]
