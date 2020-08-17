@@ -450,6 +450,7 @@ fn transform_block(
             clippy::missing_docs_in_private_items,
             clippy::needless_lifetimes,
             clippy::ptr_arg,
+            clippy::trivially_copy_pass_by_ref,
             clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding,
         )]
