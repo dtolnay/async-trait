@@ -961,3 +961,20 @@ mod issue110 {
         async fn load(&self, _key: &str) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/120
+mod issue120 {
+    #![deny(clippy::trivially_copy_pass_by_ref)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait {
+        async fn f(&self);
+    }
+
+    #[async_trait]
+    impl Trait for () {
+        async fn f(&self) {}
+    }
+}
