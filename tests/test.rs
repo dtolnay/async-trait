@@ -884,7 +884,7 @@ pub mod issue92 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/104
-mod issue104 {
+pub mod issue104 {
     use async_trait::async_trait;
 
     #[async_trait]
@@ -909,7 +909,7 @@ mod issue104 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/106
-mod issue106 {
+pub mod issue106 {
     use async_trait::async_trait;
     use std::future::Future;
 
@@ -941,7 +941,7 @@ mod issue106 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/110
-mod issue110 {
+pub mod issue110 {
     #![deny(clippy::all)]
 
     use async_trait::async_trait;
@@ -963,7 +963,7 @@ mod issue110 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/120
-mod issue120 {
+pub mod issue120 {
     #![deny(clippy::trivially_copy_pass_by_ref)]
 
     use async_trait::async_trait;
@@ -977,4 +977,22 @@ mod issue120 {
     impl Trait for () {
         async fn f(&self) {}
     }
+}
+
+// https://github.com/dtolnay/async-trait/issues/123
+pub mod issue123 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait<T = ()> {
+        async fn f(&self) -> &str
+        where
+            T: 'async_trait,
+        {
+            "default"
+        }
+    }
+
+    #[async_trait]
+    impl<T> Trait<T> for () {}
 }
