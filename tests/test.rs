@@ -979,8 +979,8 @@ pub mod issue120 {
     }
 }
 
-// https://github.com/dtolnay/async-trait/pulls/??
-mod pull__ {
+// https://github.com/dtolnay/async-trait/pulls/123
+pub mod pull123 {
     use async_trait::async_trait;
 
     #[async_trait]
