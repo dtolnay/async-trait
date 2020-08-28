@@ -286,12 +286,8 @@ fn transform_block(
     let mut outer_generics = generics.clone();
     for p in &mut outer_generics.params {
         match p {
-            GenericParam::Type(t) => {
-                let _ = t.default.take();
-            }
-            GenericParam::Const(c) => {
-                let _ = c.default.take();
-            }
+            GenericParam::Type(t) => t.default = None,
+            GenericParam::Const(c) => c.default = None,
             GenericParam::Lifetime(_) => {}
         }
     }
