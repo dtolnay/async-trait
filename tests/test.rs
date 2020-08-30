@@ -883,6 +883,35 @@ pub mod issue92 {
     }
 }
 
+// https://github.com/dtolnay/async-trait/issues/92#issuecomment-683370136
+pub mod issue92_2 {
+    use async_trait::async_trait;
+
+    macro_rules! mac {
+        ($($tt:tt)*) => {
+            $($tt)*
+        };
+    }
+
+    pub trait Trait1 {
+        fn func1();
+    }
+
+    #[async_trait]
+    pub trait Trait2: Trait1 {
+        async fn func2() {
+            mac!(Self::func1());
+
+            macro_rules! mac2 {
+                ($($tt:tt)*) => {
+                    Self::func1();
+                };
+            }
+            mac2!();
+        }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/104
 pub mod issue104 {
     use async_trait::async_trait;

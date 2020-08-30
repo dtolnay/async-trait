@@ -29,6 +29,14 @@ pub fn has_self_in_block(block: &mut Block) -> bool {
     visitor.0
 }
 
+fn has_self_in_token_stream(tokens: TokenStream) -> bool {
+    tokens.into_iter().any(|tt| match tt {
+        TokenTree::Ident(ident) => ident == "Self",
+        TokenTree::Group(group) => has_self_in_token_stream(group.stream()),
+        _ => false,
+    })
+}
+
 struct HasSelf(bool);
 
 impl VisitMut for HasSelf {
@@ -53,6 +61,12 @@ impl VisitMut for HasSelf {
 
     fn visit_item_mut(&mut self, _: &mut Item) {
         // Do not recurse into nested items.
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        if !contains_fn(mac.tokens.clone()) {
+            self.0 |= has_self_in_token_stream(mac.tokens.clone());
+        }
     }
 }
 
@@ -278,14 +292,14 @@ impl VisitMut for ReplaceReceiver {
         }
     }
 
-    fn visit_macro_mut(&mut self, i: &mut Macro) {
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
         // We can't tell in general whether `self` inside a macro invocation
         // refers to the self in the argument list or a different self
         // introduced within the macro. Heuristic: if the macro input contains
         // `fn`, then `self` is more likely to refer to something other than the
         // outer function's self argument.
-        if !contains_fn(i.tokens.clone()) {
-            self.visit_token_stream(&mut i.tokens);
+        if !contains_fn(mac.tokens.clone()) {
+            self.visit_token_stream(&mut mac.tokens);
         }
     }
 }
