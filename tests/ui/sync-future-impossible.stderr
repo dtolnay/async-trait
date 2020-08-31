@@ -1,0 +1,19 @@
+error: future cannot be shared between threads safely
+  --> $DIR/sync-future-impossible.rs:16:32
+   |
+16 |       async fn method(&mut self) {
+   |  ________________________________^
+17 | |         println!("{}", self.value);
+18 | |     }
+   | |_____^ future created by async block is not `Sync`
+   |
+note: captured value is not `Sync`
+  --> $DIR/sync-future-impossible.rs:17:24
+   |
+17 |         println!("{}", self.value);
+   |                        ^^^^ has type `&mut Struct<T>` which is not `Sync`
+   = note: required for the cast to the object type `dyn std::future::Future<Output = ()> + std::marker::Send + std::marker::Sync`
+help: consider further restricting this bound
+   |
+14 | impl<T: std::fmt::Display + Send + std::marker::Sync> Trait for Struct<T> {
+   |                                  ^^^^^^^^^^^^^^^^^^^

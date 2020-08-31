@@ -1,0 +1,19 @@
+error: expected `+`
+ --> $DIR/future-is-nonsense.rs:8:22
+  |
+8 |     #[future_is[Sync - Send]]
+  |                      ^
+
+error: expected square brackets
+  --> $DIR/future-is-nonsense.rs:11:16
+   |
+11 |     #[future_is(Sync)]
+   |                ^
+
+error[E0405]: cannot find trait `Nonsense` in this scope
+ --> $DIR/future-is-nonsense.rs:5:17
+  |
+4 | trait Trait {
+  |            - help: you might be missing a type parameter: `<Nonsense>`
+5 |     #[future_is[Nonsense]]
+  |                 ^^^^^^^^ not found in this scope
