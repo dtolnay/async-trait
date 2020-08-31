@@ -71,6 +71,9 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let future_bounds = get_future_bounds(&mut method.attrs);
                         transform_sig(context, sig, has_self, has_default, is_local, future_bounds);
                         method.attrs.push(parse_quote!(#[must_use]));
+                        method.attrs.push(parse_quote!(#[allow(clippy::needless_lifetimes)]));
+                        method.attrs.push(parse_quote!(#[allow(clippy::extra_unused_lifetimes)]));
+                        method.attrs.push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
                     }
                 }
             }

@@ -1089,11 +1089,11 @@ pub mod issue77 {
 
     #[async_trait]
     trait Test {
-        async fn test(also_okay: Elided, okay: &usize);
+        async fn test(_also_okay: Elided, _okay: &usize);
     }
 
     #[async_trait]
     impl Test for () {
-        async fn test(also_okay: Elided, okay: &usize) {}
+        async fn test(_also_okay: Elided, _okay: &usize) {}
     }
 }
