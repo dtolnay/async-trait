@@ -6,11 +6,14 @@ use crate::receiver::{
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::mem;
+use syn::parse::Parser;
 use syn::punctuated::Punctuated;
+use syn::token::Add;
 use syn::visit_mut::VisitMut;
+use syn::Attribute;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
-    Path, Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParam, TypeParamBound,
+    Path, Receiver, ReturnType, Signature, Stmt, TraitItem, Type, TypeParam, TypeParamBound,
     WhereClause,
 };
 
@@ -53,7 +56,7 @@ impl Context<'_> {
     }
 }
 
-type Supertraits = Punctuated<TypeParamBound, Token![+]>;
+type Supertraits = Punctuated<TypeParamBound, Add>;
 
 pub fn expand(input: &mut Item, is_local: bool) {
     match input {
@@ -74,7 +77,8 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             transform_block(context, sig, block, has_self, is_local);
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        let future_bounds = take_future_is_bounds(&mut method.attrs);
+                        transform_sig(context, sig, has_self, has_default, is_local, future_bounds);
                         method.attrs.push(parse_quote!(#[must_use]));
                     }
                 }
@@ -99,13 +103,41 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
+                        let future_bounds = take_future_is_bounds(&mut method.attrs);
                         transform_block(context, sig, block, has_self, is_local);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_sig(context, sig, has_self, false, is_local, future_bounds);
                     }
                 }
             }
         }
     }
+}
+
+fn take_future_is_bounds(attrs: &mut Vec<Attribute>) -> Supertraits {
+    let model: Attribute = parse_quote!(#[future_is()]);
+    let mut bounds = if let Some(pos) = attrs.iter().position(|attr| {
+        attr.path == model.path
+            && attr.pound_token == model.pound_token
+            && attr.style == model.style
+    }) {
+        let mut future_is = attrs.remove(pos);
+        let parser = Supertraits::parse_terminated;
+        match parser.parse(future_is.tokens.into()) {
+            Ok(bounds) => bounds,
+            Err(error) => {
+                //let span = future_is.tokens.span();
+                let error = error.to_compile_error();
+                future_is.tokens = parse_quote!(#error);
+                attrs.insert(pos, future_is);
+                Punctuated::new()
+            }
+        }
+    } else {
+        Punctuated::new()
+    };
+
+    bounds.push(parse_quote!('async_trait));
+    bounds
 }
 
 // Input:
@@ -127,6 +159,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
+    mut future_bounds: Supertraits,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -227,15 +260,13 @@ fn transform_sig(
         }
     }
 
-    let bounds = if is_local {
-        quote!('async_trait)
-    } else {
-        quote!(::core::marker::Send + 'async_trait)
-    };
+    if !is_local {
+        future_bounds.push(parse_quote!(::core::marker::Send));
+    }
 
     sig.output = parse_quote! {
         -> ::core::pin::Pin<Box<
-            dyn ::core::future::Future<Output = #ret> + #bounds
+            dyn ::core::future::Future<Output = #ret> + #future_bounds
         >>
     };
 }

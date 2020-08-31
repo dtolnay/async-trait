@@ -1025,3 +1025,49 @@ pub mod issue123 {
     #[async_trait]
     impl<T> Trait<T> for () {}
 }
+
+// https://github.com/dtolnay/async-trait/issues/77
+pub mod issue77 {
+    use async_trait::async_trait;
+
+    pub fn is_sync<T: Sync>(_tester: T) {}
+    pub fn is_static<T: 'static>(_tester: T) {}
+
+    pub fn test_sync<T: SyncFuture>(tested: T) {
+        is_sync(tested.f())
+    }
+
+    #[async_trait]
+    pub trait SyncFuture {
+        #[future_is(Sync)]
+        async fn f(&self) -> &str;
+    }
+
+    #[async_trait]
+    impl SyncFuture for () {
+        #[future_is(Sync)]
+        async fn f(&self) -> &str {
+            "hola"
+        }
+    }
+
+    /* Not working yet, doesn't like '
+    fn test_static<T: StaticFuture>(tested: T) {
+        is_static(tested.f())
+    }
+
+    #[async_trait]
+    pub trait StaticFuture {
+        #[future_is('static)]
+        async fn f(&self) -> &str;
+    }
+    
+    #[async_trait]
+    impl StaticFuture for () {
+        #[future_is('static)]
+        async fn f(&self) -> &str {
+            "hola"
+        }
+    }
+    */
+}
