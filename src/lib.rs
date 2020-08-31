@@ -162,14 +162,14 @@
 //! Fortunately the compiler is able to diagnose missing lifetimes with a good
 //! error message.
 //!
-//! ```compile_fail
+//! ```
 //! # use async_trait::async_trait;
 //! #
 //! type Elided<'a> = &'a usize;
 //!
 //! #[async_trait]
 //! trait Test {
-//!     async fn test(not_okay: Elided, okay: &usize) {}
+//!     async fn test(also_okay: Elided, okay: &usize) {}
 //! }
 //! ```
 //!
@@ -325,4 +325,12 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut item = parse_macro_input!(input as Item);
     expand(&mut item, args.local);
     TokenStream::from(quote!(#item))
+}
+
+/// Serves to replace future_is attribute with a parsing error 
+/// since future_is doesnt really exist outside of the scope of 
+/// async_trait
+#[proc_macro_attribute]
+pub fn error(attr: TokenStream, _item: TokenStream) -> TokenStream {
+    attr
 }

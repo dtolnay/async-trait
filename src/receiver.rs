@@ -8,18 +8,11 @@ use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
     PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Token, Type, TypePath,
-    WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
     let mut visitor = HasSelf(false);
     visitor.visit_signature_mut(sig);
-    visitor.0
-}
-
-pub fn has_self_in_where_predicate(where_predicate: &mut WherePredicate) -> bool {
-    let mut visitor = HasSelf(false);
-    visitor.visit_where_predicate_mut(where_predicate);
     visitor.0
 }
 
@@ -76,20 +69,6 @@ pub struct ReplaceReceiver {
 }
 
 impl ReplaceReceiver {
-    pub fn with(ty: Type) -> Self {
-        ReplaceReceiver {
-            with: ty,
-            as_trait: None,
-        }
-    }
-
-    pub fn with_as_trait(ty: Type, as_trait: Path) -> Self {
-        ReplaceReceiver {
-            with: ty,
-            as_trait: Some(as_trait),
-        }
-    }
-
     fn self_ty(&self, span: Span) -> Type {
         respan(&self.with, span)
     }

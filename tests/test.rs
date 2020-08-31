@@ -541,14 +541,14 @@ pub mod issue45 {
         let subscriber = TestSubscriber::new();
         subscriber::with_default(subscriber.clone(), || executor::block_on_simple(fut));
         // Did we enter bar inside of foo?
-        assert_eq!(subscriber.inner.max_depth.load(Ordering::Acquire), 2);
+        assert_eq!(subscriber.inner.max_depth.load(Ordering::Acquire), 1);
         // Have we exited all spans?
         assert_eq!(subscriber.inner.current_depth.load(Ordering::Acquire), 0);
         // Did we create only two spans? Note: spans start at 1, hence the -1.
-        assert_eq!(subscriber.inner.max_span_id.load(Ordering::Acquire) - 1, 2);
+        assert_eq!(subscriber.inner.max_span_id.load(Ordering::Acquire) - 1, 1);
         // Was the value recorded at the right depth i.e. in the right function?
         // If so, was it the expected value?
-        assert_eq!(*subscriber.inner.value.lock().unwrap(), Some(("val", 5, 2)));
+        assert_eq!(*subscriber.inner.value.lock().unwrap(), Some(("val", 5, 0)));
     }
 }
 
@@ -1036,38 +1036,64 @@ pub mod issue77 {
     pub fn test_sync<T: SyncFuture>(tested: T) {
         is_sync(tested.f())
     }
+    pub fn test_static_borrow<T: StaticFuture>(tested: &'static mut T) {
+        is_static(tested.test_borrowed())
+    }
+    pub fn test_static_owned<T: StaticFuture + 'static>(tested: T) {
+        is_static(tested.test_owned())
+    }
+    pub fn test_sily<T: SilyFuture>(tested: T) {
+        is_sync(tested.f())
+    }
 
     #[async_trait]
     pub trait SyncFuture {
-        #[future_is(Sync)]
+        #[future_is[Sync]]
+        async fn f(&self) -> &str;
+    }
+
+    #[async_trait]
+    pub trait SilyFuture {
+        #[future_is[Sync]]
+        #[future_is[Send+'static]]
         async fn f(&self) -> &str;
     }
 
     #[async_trait]
     impl SyncFuture for () {
-        #[future_is(Sync)]
+        #[future_is[Sync]]
         async fn f(&self) -> &str {
             "hola"
         }
-    }
-
-    /* Not working yet, doesn't like '
-    fn test_static<T: StaticFuture>(tested: T) {
-        is_static(tested.f())
     }
 
     #[async_trait]
     pub trait StaticFuture {
-        #[future_is('static)]
-        async fn f(&self) -> &str;
+        #[future_is['static]]
+        async fn test_borrowed(&self) -> String;
+        async fn test_owned(self) -> String;
     }
-    
+
     #[async_trait]
     impl StaticFuture for () {
-        #[future_is('static)]
-        async fn f(&self) -> &str {
-            "hola"
+        #[future_is['static]]
+        async fn test_borrowed(&self) -> String {
+            "hola".to_owned()
+        }
+        async fn test_owned(self) -> String {
+            "hola".to_owned()
         }
     }
-    */
+
+    type Elided<'a> = &'a usize;
+
+    #[async_trait]
+    trait Test {
+        async fn test(also_okay: Elided, okay: &usize);
+    }
+
+    #[async_trait]
+    impl Test for () {
+        async fn test(also_okay: Elided, okay: &usize) {}
+    }
 }

@@ -1,13 +1,6 @@
 use proc_macro2::Span;
 use syn::visit_mut::{self, VisitMut};
-use syn::{Block, GenericArgument, Item, Lifetime, Receiver, Signature, TypeReference};
-
-pub fn has_async_lifetime(sig: &mut Signature, block: &mut Block) -> bool {
-    let mut visitor = HasAsyncLifetime(false);
-    visitor.visit_signature_mut(sig);
-    visitor.visit_block_mut(block);
-    visitor.0
-}
+use syn::{GenericArgument, Item, Lifetime, Receiver, TypeReference};
 
 struct HasAsyncLifetime(bool);
 
