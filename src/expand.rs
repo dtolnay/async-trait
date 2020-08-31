@@ -128,34 +128,20 @@ struct FutureBounds {
     is_static: bool,
 }
 impl syn::parse::Parse for FutureBounds {
-    fn parse(group: syn::parse::ParseStream) -> Result<Self, syn::Error> {
+    fn parse(bracket: syn::parse::ParseStream) -> Result<Self, syn::Error> {
         let mut this = FutureBounds::new();
         let input;
-        syn::bracketed!(input in group);
+        syn::bracketed!(input in bracket);
         while !input.is_empty() {
-            // for some reason TypeParamBound does not pick up lifetimes.
-            // so we'll try that first
-            let lifetime: Result<Lifetime, _> = input.parse();
-            match lifetime {
-                Ok(lifetime) => {
-                    if lifetime.ident == "static" {
-                        this.is_static = true;
-                    }
-                    this.bounds.push(TypeParamBound::Lifetime(lifetime));
+            let bound = input.parse()?;
+            if let TypeParamBound::Lifetime(Lifetime { ref ident, .. }) = bound {
+                if ident == "static" {
+                    this.is_static = true;
                 }
-                Err(_) => {
-                    // It is not a lifetime bound!
-                    let bound = input.parse()?;
-                    if let TypeParamBound::Lifetime(Lifetime { ref ident, .. }) = bound {
-                        if ident == "static" {
-                            this.is_static = true;
-                        }
-                    }
-                    this.bounds.push(bound);
-                    if !input.is_empty() {
-                        let _add: Add = input.parse()?;
-                    }
-                }
+            }
+            this.bounds.push(bound);
+            if !input.is_empty() {
+                let _add: Add = input.parse()?;
             }
         }
         Ok(this)
