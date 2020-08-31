@@ -314,10 +314,10 @@ fn transform_sig(
 //     }
 //
 // Output:
-//     async fn f<T, AsyncTrait>(_self: &AsyncTrait, x: &T) -> Ret {
-//         _self + x
-//     }
-//     Box::pin(async_trait_method::<T, Self>(self, x))
+//     let fut = async move {
+//         self + x
+//     };
+//     Box::new(fut)
 fn transform_block(block: &mut Block) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
