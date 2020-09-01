@@ -1042,7 +1042,7 @@ pub mod issue77 {
     pub fn test_static_owned<T: StaticFuture + 'static>(tested: T) {
         is_static(tested.test_owned())
     }
-    pub fn test_sily<T: SilyFuture>(tested: T) {
+    pub fn test_sily<T: SillyFuture>(tested: T) {
         is_sync(tested.f())
     }
 
@@ -1053,9 +1053,9 @@ pub mod issue77 {
     }
 
     #[async_trait]
-    pub trait SilyFuture {
+    pub trait SillyFuture {
         #[future_is[Sync]]
-        #[future_is[Send+'static]]
+        #[future_is[Send + 'static]]
         async fn f(&self) -> &str;
     }
 

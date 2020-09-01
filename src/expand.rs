@@ -71,9 +71,15 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let future_bounds = get_future_bounds(&mut method.attrs);
                         transform_sig(context, sig, has_self, has_default, is_local, future_bounds);
                         method.attrs.push(parse_quote!(#[must_use]));
-                        method.attrs.push(parse_quote!(#[allow(clippy::needless_lifetimes)]));
-                        method.attrs.push(parse_quote!(#[allow(clippy::extra_unused_lifetimes)]));
-                        method.attrs.push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
+                        method
+                            .attrs
+                            .push(parse_quote!(#[allow(clippy::needless_lifetimes)]));
+                        method
+                            .attrs
+                            .push(parse_quote!(#[allow(clippy::extra_unused_lifetimes)]));
+                        method
+                            .attrs
+                            .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
                     }
                 }
             }
@@ -104,20 +110,16 @@ pub fn expand(input: &mut Item, is_local: bool) {
         }
     }
 }
-
 fn get_future_bounds(attrs: &mut Vec<Attribute>) -> FutureBounds {
-    let model: Attribute = parse_quote!(#[future_is(Sync)]);
+    let model: Attribute = parse_quote!(#[future_is[Sync]]);
     let mut result = FutureBounds::new();
     for pos in (0..attrs.len()).rev() {
         let attr = &attrs[pos];
-        if attr.path == model.path
-            && attr.pound_token == model.pound_token
-            && attr.style == model.style
-        {
+        if attr.path == model.path && attr.style == model.style {
             let future_is = attrs.remove(pos);
             let remaining: TokenStream = result.parse(future_is).into();
             if !remaining.is_empty() {
-                attrs.insert(pos, parse_quote!(#[::async_trait::error(#remaining)]))
+                attrs.insert(pos, parse_quote!(#[::async_trait::future_is(#remaining)]))
             }
         }
     }

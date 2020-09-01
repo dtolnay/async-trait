@@ -1,0 +1,12 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/elided-new.rs:24:56
+   |
+24 |     async fn test_nok(elided: Elided, okay: &usize) -> &usize;
+   |                               ------        ------     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+note: these named lifetimes are available to use
+  --> $DIR/elided-new.rs:22:1
+   |
+22 | #[async_trait]
+   | ^^^^^^^^^^^^^^

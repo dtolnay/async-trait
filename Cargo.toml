@@ -11,11 +11,12 @@ readme = "README.md"
 
 [lib]
 proc-macro = true
+path = "src/lib.rs"
 
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0", features = ["full", "visit-mut"] }
+syn = { version = "1.0", features = ["full", "visit-mut", "extra-traits"] }
 
 [dev-dependencies]
 rustversion = "1.0"

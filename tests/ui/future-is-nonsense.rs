@@ -9,7 +9,7 @@ trait Trait {
     async fn method2(&mut self);
     
     #[future_is(Sync)]
-    async fn method2(&mut self);
+    async fn method3(&mut self);
 }
 
 fn main() {}

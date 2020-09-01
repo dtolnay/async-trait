@@ -79,14 +79,11 @@
 //!         Modal.run().await;
 //!     }
 //! }
-//! #
 //! # impl Modal {
 //! #     async fn render_fullscreen(&self) {}
 //! #     async fn hide_for_now(&self) {}
 //! # }
-//! #
 //! # async fn remind_user_to_join_mailing_list() {}
-//! #
 //! # struct Stream;
 //! # async fn connect(_media_url: &str) -> Stream { Stream }
 //! # impl Stream {
@@ -99,8 +96,8 @@
 //! # Supported features
 //!
 //! It is the intention that all features of Rust traits should work nicely with
-//! #\[async_trait\], but the edge cases are numerous. Please file an issue if
-//! you see unexpected borrow checker errors, type errors, or warnings. There is
+//! #\[async_trait\], but the edge cases are numerous. *Please file an issue if
+//! you see unexpected borrow checker errors, type errors, or warnings.* There is
 //! no use of `unsafe` in the expanded code, so rest assured that if your code
 //! compiles it can't be that badly broken.
 //!
@@ -112,13 +109,14 @@
 //! > &#9745;&emsp;Default implementations provided by the trait;<br>
 //! > &#9745;&emsp;Elided lifetimes;<br>
 //! > &#9745;&emsp;Dyn-capable traits.<br>
+//! > &#9745;&emsp;Opt in for stricter bounds on futures with #[future_is[BOUND]].<br>
 //!
 //! <br>
 //!
 //! # Explanation
 //!
 //! Async fns get transformed into methods that return `Pin<Box<dyn Future +
-//! Send + 'async>>` and delegate to a private async freestanding function.
+//! Send + 'async_trait>>` and delegate to a private async freestanding function.
 //!
 //! For example the `impl Advertisement for AutoplayingVideo` above would be
 //! expanded as:
@@ -126,17 +124,17 @@
 //! ```
 //! # const IGNORE: &str = stringify! {
 //! impl Advertisement for AutoplayingVideo {
-//!     fn run<'async>(
-//!         &'async self,
-//!     ) -> Pin<Box<dyn core::future::Future<Output = ()> + Send + 'async>>
+//!     fn run<'async_trait>(
+//!         &'async_trait self,
+//!     ) -> Pin<Box<dyn core::future::Future<Output = ()> + Send + 'async_trait>>
 //!     where
-//!         Self: Sync + 'async,
+//!         Self: Sync + 'async_trait,
 //!     {
-//!         async fn run(_self: &AutoplayingVideo) {
+//!         let fut = async move {
 //!             /* the original method body */
-//!         }
+//!         };
 //!
-//!         Box::pin(run(self))
+//!         Box::pin(fut)
 //!     }
 //! }
 //! # };
@@ -162,41 +160,39 @@
 //! Fortunately the compiler is able to diagnose missing lifetimes with a good
 //! error message.
 //!
-//! ```
+//! ```compile_fail
 //! # use async_trait::async_trait;
 //! #
 //! type Elided<'a> = &'a usize;
 //!
 //! #[async_trait]
 //! trait Test {
-//!     async fn test(also_okay: Elided, okay: &usize) {}
+//!     async fn test(elided: Elided, okay: &usize) -> &usize { elided }
 //! }
 //! ```
 //!
-//! ```text
-//! error[E0726]: implicit elided lifetime not allowed here
-//!  --> src/main.rs:9:29
-//!   |
-//! 9 |     async fn test(not_okay: Elided, okay: &usize) {}
-//!   |                             ^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+//! ```console
+//! error[E0106]: missing lifetime specifier
+//!    |
+//! 19 |     async fn test(elided: Elided, okay: &usize) -> &usize { elided }
+//!    |                           ------        ------     ^ expected named lifetime parameter
+//!    |
+//!    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `elided` or `okay`
+//! note: these named lifetimes are available to use
+//!    |
+//! 17 | #[async_trait]
+//!    | ^^^^^^^^^^^^^^
 //! ```
 //!
-//! The fix is to name the lifetime or use `'_`.
+//! The fix is to name the lifetime.
 //!
-//! ```
+//! ```rust
 //! # use async_trait::async_trait;
-//! #
 //! # type Elided<'a> = &'a usize;
-//! #
 //! #[async_trait]
 //! trait Test {
 //!     // either
-//!     async fn test<'e>(elided: Elided<'e>) {}
-//! # }
-//! # #[async_trait]
-//! # trait Test2 {
-//!     // or
-//!     async fn test(elided: Elided<'_>) {}
+//!     async fn test<'e>(elided: Elided<'e>, okay: &usize) -> &'e usize { elided }
 //! }
 //! ```
 //!
@@ -208,9 +204,8 @@
 //! the usual requirements for dyn -- no methods with type parameters, no self
 //! by value, no associated types, etc.
 //!
-//! ```
+//! ```rust
 //! # use async_trait::async_trait;
-//! #
 //! #[async_trait]
 //! pub trait ObjectSafe {
 //!     async fn f(&self);
@@ -222,15 +217,12 @@
 //!
 //! let value: MyType = ...;
 //! # };
-//! #
 //! # struct MyType;
-//! #
 //! # #[async_trait]
 //! # impl ObjectSafe for MyType {
 //! #     async fn f(&self) {}
 //! #     async fn g(&mut self) {}
 //! # }
-//! #
 //! # let value: MyType = MyType;
 //! let object = &value as &dyn ObjectSafe;  // make trait object
 //! ```
@@ -247,7 +239,7 @@
 //! Creating a value of type `&dyn Trait` will produce an error that looks like
 //! this:
 //!
-//! ```text
+//! ```console
 //! error: the trait `Test` cannot be made into an object
 //!  --> src/main.rs:8:5
 //!   |
@@ -264,17 +256,13 @@
 //!
 //! ```
 //! # use async_trait::async_trait;
-//! #
 //! #[async_trait]
 //! pub trait ObjectSafe: Sync {  // added supertrait
 //!     async fn can_dyn(&self) {}
 //! }
-//! #
 //! # struct MyType;
-//! #
 //! # #[async_trait]
 //! # impl ObjectSafe for MyType {}
-//! #
 //! # let value = MyType;
 //!
 //! let object = &value as &dyn ObjectSafe;
@@ -285,24 +273,40 @@
 //!
 //! ```
 //! # use async_trait::async_trait;
-//! #
 //! #[async_trait]
 //! pub trait ObjectSafe {
 //!     async fn cannot_dyn(&self) where Self: Sized {}
 //!
 //!     // presumably other methods
 //! }
-//! #
 //! # struct MyType;
-//! #
 //! # #[async_trait]
 //! # impl ObjectSafe for MyType {}
-//! #
 //! # let value = MyType;
 //!
 //! let object = &value as &dyn ObjectSafe;
 //! ```
-
+//!
+//! <br><br>
+//!
+//! # Stricter future bounds with #[future_is[BOUND]]
+//!
+//! You can require the future to be `Sync` or `'static` or even both:
+//! ```
+//! # use async_trait::async_trait;
+//! #[async_trait]
+//! trait SyncStaticFutures {
+//!     #[future_is[Sync + 'static]]
+//!     async fn sync_and_static(&self) -> String;
+//! }
+//! fn test<T:SyncStaticFutures>(tested:T)
+//! {
+//!     is_sync(tested.sync_and_static());
+//!     is_static(tested.sync_and_static());
+//! }
+//! fn is_sync<T: Sync>(_tester: T) {}
+//! fn is_static<T: 'static>(_tester: T) {}
+//! ```
 extern crate proc_macro;
 
 mod args;
@@ -327,10 +331,13 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(quote!(#item))
 }
 
-/// Serves to replace future_is attribute with a parsing error 
-/// since future_is doesnt really exist outside of the scope of 
-/// async_trait
+/// Serves to preserve a parsing error since future_is
+/// doesn't really work outside of the scope of async_trait.
+/// future_is parsing is handled by the #[async_trait] macro attribute
+/// In other words: do not use this outside of #[async_trait] trait
+/// definitions and implementations on anything but async methods.
 #[proc_macro_attribute]
-pub fn error(attr: TokenStream, _item: TokenStream) -> TokenStream {
-    attr
+pub fn future_is(attr: TokenStream, mut item: TokenStream) -> TokenStream {
+    item.extend(attr);
+    item
 }
