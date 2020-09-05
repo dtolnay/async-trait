@@ -9,14 +9,14 @@ error: future cannot be sent between threads safely
 12 | |     }
    | |_____^ future returned by `__test` is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::sync::MutexGuard<'_, ()>`
+   = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/send-not-implemented.rs:11:9
    |
 10 |         let _guard = mutex.lock().unwrap();
-   |             ------ has type `std::sync::MutexGuard<'_, ()>` which is not `Send`
+   |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
 11 |         f().await;
    |         ^^^^^^^^^ await occurs here, with `_guard` maybe used later
 12 |     }
    |     - `_guard` is later dropped here
-   = note: required for the cast to the object type `dyn std::future::Future<Output = ()> + std::marker::Send`
+   = note: required for the cast to the object type `dyn Future<Output = ()> + Send`
