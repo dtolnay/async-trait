@@ -1025,3 +1025,26 @@ pub mod issue123 {
     #[async_trait]
     impl<T> Trait<T> for () {}
 }
+
+// https://github.com/dtolnay/async-trait/issues/129
+pub mod issue129 {
+    #![deny(clippy::pedantic)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait TestTrait {
+        async fn a(_b: u8, c: u8) -> u8 {
+            c
+        }
+    }
+
+    pub struct TestStruct;
+
+    #[async_trait]
+    impl TestTrait for TestStruct {
+        async fn a(_b: u8, c: u8) -> u8 {
+            c
+        }
+    }
+}
