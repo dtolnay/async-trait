@@ -72,6 +72,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(context, sig, block, has_self, is_local);
+                            method.attrs.push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
@@ -101,6 +102,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, has_self, is_local);
                         transform_sig(context, sig, has_self, false, is_local);
+                        method.attrs.push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
                     }
                 }
             }
