@@ -1,6 +1,6 @@
 [package]
 name = "async-trait"
-version = "0.1.40"
+version = "0.1.41"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
