@@ -1,4 +1,7 @@
-#![cfg_attr(async_trait_nightly_testing, feature(specialization, const_generics))]
+#![cfg_attr(
+    async_trait_nightly_testing,
+    feature(min_specialization, min_const_generics)
+)]
 
 use async_trait::async_trait;
 
@@ -1045,6 +1048,32 @@ pub mod issue129 {
     impl TestTrait for TestStruct {
         async fn a(_b: u8, c: u8) -> u8 {
             c
+        }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/134
+#[cfg(async_trait_nightly_testing)]
+pub mod issue134 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait TestTrait {
+        async fn run<const DUMMY: bool>(self) -> ()
+        where
+            Self: Sized,
+        {
+        }
+    }
+
+    pub struct TestStruct;
+
+    #[async_trait]
+    impl TestTrait for TestStruct {
+        async fn run<const DUMMY: bool>(self) -> ()
+        where
+            Self: Sized,
+        {
         }
     }
 }

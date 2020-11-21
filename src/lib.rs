@@ -303,6 +303,8 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 
+#![allow(clippy::match_like_matches_macro)] // matches! requires Rust 1.42
+
 extern crate proc_macro;
 
 mod args;
