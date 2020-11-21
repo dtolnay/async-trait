@@ -1059,7 +1059,7 @@ pub mod issue134 {
 
     #[async_trait]
     trait TestTrait {
-        async fn run<const DUMMY: bool>(self) -> ()
+        async fn run<const DUMMY: bool>(self)
         where
             Self: Sized,
         {
@@ -1070,7 +1070,7 @@ pub mod issue134 {
 
     #[async_trait]
     impl TestTrait for TestStruct {
-        async fn run<const DUMMY: bool>(self) -> ()
+        async fn run<const DUMMY: bool>(self)
         where
             Self: Sized,
         {
