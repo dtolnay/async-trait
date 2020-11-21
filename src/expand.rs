@@ -414,10 +414,22 @@ fn transform_block(
             if !is_local {
                 self_param.bounds.extend(self_bound);
             }
+            let count = standalone
+                .generics
+                .params
+                .iter()
+                .take_while(|param| {
+                    if let GenericParam::Const(_) = param {
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .count();
             standalone
                 .generics
                 .params
-                .push(GenericParam::Type(self_param));
+                .insert(count, GenericParam::Type(self_param));
             types.push(Ident::new("Self", Span::call_site()));
         }
     }
