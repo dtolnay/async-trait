@@ -2,6 +2,11 @@
     async_trait_nightly_testing,
     feature(min_specialization, min_const_generics)
 )]
+#![allow(
+    clippy::let_underscore_drop,
+    clippy::let_unit_value,
+    clippy::trivially_copy_pass_by_ref
+)]
 
 use async_trait::async_trait;
 
