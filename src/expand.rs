@@ -257,11 +257,15 @@ fn transform_sig(
 //
 // Output:
 //     Box::pin(async move {
-//         let __self = self;
-//         let x = x;
-//         let (a, b) = __arg1;
+//         let ___ret: Ret = {
+//             let __self = self;
+//             let x = x;
+//             let (a, b) = __arg1;
 //
-//         __self + x + a + b
+//             __self + x + a + b
+//         };
+//
+//         ___ret
 //     })
 fn transform_block(
     sig: &mut Signature,
@@ -303,14 +307,23 @@ fn transform_block(
     }
 
     let stmts = &block.stmts;
-    let new_block = quote_spanned!(block.brace_token.span=> {
-        Box::pin(async move {
-            #(#decls)*
-            #(#stmts)*
-        })
-    });
+    let ret_ty = match &sig.output {
+        ReturnType::Default => quote_spanned!(block.span()=>()),
+        ReturnType::Type(_, ret) => quote!(#ret),
+    };
 
-    *block = parse_quote!(#new_block);
+    let box_pin = quote_spanned!(ret_ty.span()=>
+        Box::pin(async move {
+            let __ret: #ret_ty = {
+                #(#decls)*
+                #(#stmts)*
+            };
+
+            __ret
+        })
+    );
+
+    block.stmts = parse_quote!(#box_pin);
 }
 
 fn positional_arg(i: usize, span: Span) -> Ident {

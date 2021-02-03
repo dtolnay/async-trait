@@ -190,6 +190,15 @@ pub async fn test_self_in_macro() {
     }
 }
 
+pub async fn test_inference() {
+    #[async_trait]
+    pub trait Trait {
+        async fn f() -> Box<dyn Iterator<Item = ()>> {
+            Box::new(std::iter::empty())
+        }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
