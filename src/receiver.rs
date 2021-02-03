@@ -43,6 +43,14 @@ pub fn mut_pat(pat: &mut Pat) -> Option<Token![mut]> {
     visitor.0
 }
 
+fn contains_fn(tokens: TokenStream) -> bool {
+    tokens.into_iter().any(|tt| match tt {
+        TokenTree::Ident(ident) => ident == "fn",
+        TokenTree::Group(group) => contains_fn(group.stream()),
+        _ => false,
+    })
+}
+
 struct HasMutPat(Option<Token![mut]>);
 
 impl VisitMut for HasMutPat {
@@ -90,6 +98,24 @@ impl VisitMut for HasSelf {
 
 pub struct ReplaceSelf<'a>(pub &'a str);
 
+impl ReplaceSelf<'_> {
+    fn visit_token_stream(&mut self, tt: TokenStream) -> TokenStream {
+        tt.into_iter().map(|tt| match tt {
+            TokenTree::Ident(mut ident) => {
+                self.visit_ident_mut(&mut ident);
+                TokenTree::Ident(ident)
+            }
+            TokenTree::Group(group) => {
+                let tt = self.visit_token_stream(group.stream());
+                let mut new = Group::new(group.delimiter(), tt);
+                new.set_span(group.span());
+                TokenTree::Group(new)
+            }
+            tt => tt,
+        }).collect()
+    }
+}
+
 impl VisitMut for ReplaceSelf<'_> {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         if i == "self" {
@@ -97,6 +123,19 @@ impl VisitMut for ReplaceSelf<'_> {
         }
 
         visit_mut::visit_ident_mut(self, i);
+    }
+
+    fn visit_macro_mut(&mut self, mac: &mut Macro) {
+        // We can't tell in general whether `self` inside a macro invocation
+        // refers to the self in the argument list or a different self
+        // introduced within the macro. Heuristic: if the macro input contains
+        // `fn`, then `self` is more likely to refer to something other than the
+        // outer function's self argument.
+        if !contains_fn(mac.tokens.clone()) {
+            mac.tokens = self.visit_token_stream(mac.tokens.clone());
+        }
+
+        visit_mut::visit_macro_mut(self, mac);
     }
 }
 
@@ -332,14 +371,6 @@ impl VisitMut for ReplaceReceiver {
             self.visit_token_stream(&mut mac.tokens);
         }
     }
-}
-
-fn contains_fn(tokens: TokenStream) -> bool {
-    tokens.into_iter().any(|tt| match tt {
-        TokenTree::Ident(ident) => ident == "fn",
-        TokenTree::Group(group) => contains_fn(group.stream()),
-        _ => false,
-    })
 }
 
 fn prepend_underscore_to_self(ident: &mut Ident) -> bool {

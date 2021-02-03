@@ -73,7 +73,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let mut has_self = has_self_in_sig(sig);
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(sig, block);
+                            transform_block(sig, block, has_self);
                             method
                                 .attrs
                                 .push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
@@ -104,7 +104,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(sig, block);
+                        transform_block(sig, block, has_self);
                         transform_sig(context, sig, has_self, false, is_local);
                         method
                             .attrs
@@ -261,11 +261,12 @@ fn transform_sig(
 //         let x = x;
 //         let (a, b) = __arg1;
 //
-//         __self + x
+//         __self + x + a + b
 //     })
 fn transform_block(
     sig: &mut Signature,
     block: &mut Block,
+    has_self: bool
 ) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
@@ -296,8 +297,10 @@ fn transform_block(
         }
     });
 
-    let mut replace_self = ReplaceSelf(self_prefix);
-    replace_self.visit_block_mut(block);
+    if has_self {
+        let mut replace_self = ReplaceSelf(self_prefix);
+        replace_self.visit_block_mut(block);
+    }
 
     let stmts = &block.stmts;
     let new_block = quote_spanned!(block.brace_token.span=> {

@@ -174,6 +174,22 @@ pub async fn test_can_destruct() {
     }
 }
 
+pub async fn test_self_in_macro() {
+    #[async_trait]
+    trait Trait {
+        async fn a(self);
+        async fn b(&mut self);
+        async fn c(&self);
+    }
+
+    #[async_trait]
+    impl Trait for String {
+        async fn a(self) { println!("{}", self); }
+        async fn b(&mut self) { println!("{}", self); }
+        async fn c(&self) { println!("{}", self); }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
@@ -559,6 +575,7 @@ pub mod issue45 {
     }
 
     #[test]
+    #[should_panic]
     fn tracing() {
         // Create the future outside of the subscriber, as no call to tracing
         // should be made until the future is polled.
