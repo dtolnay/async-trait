@@ -7,7 +7,7 @@ error: future cannot be sent between threads safely
 10 | |         let _guard = mutex.lock().unwrap();
 11 | |         f().await;
 12 | |     }
-   | |_____^ future returned by `__test` is not `Send`
+   | |_____^ future created by async block is not `Send`
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await

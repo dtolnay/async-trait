@@ -70,6 +70,18 @@ impl VisitMut for HasSelf {
     }
 }
 
+pub struct ReplaceSelf<'a>(pub &'a str);
+
+impl VisitMut for ReplaceSelf<'_> {
+    fn visit_ident_mut(&mut self, i: &mut Ident) {
+        if i == "self" {
+            *i = quote::format_ident!("{}{}", self.0, i);
+        }
+
+        visit_mut::visit_ident_mut(self, i);
+    }
+}
+
 pub struct ReplaceReceiver {
     pub with: Type,
     pub as_trait: Option<Path>,

@@ -1083,3 +1083,64 @@ pub mod issue134 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/pull/125#pullrequestreview-491880881
+pub mod drop_order {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use async_trait::async_trait;
+    use crate::executor;
+
+    struct Flagger<'a>(&'a AtomicBool);
+
+    impl Drop for Flagger<'_> {
+        fn drop(&mut self) {
+            self.0.fetch_xor(true, Ordering::AcqRel);
+        }
+    }
+
+    #[async_trait]
+    trait Trait {
+        async fn async_trait(_: Flagger<'_>, flag: &AtomicBool);
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn async_trait(_: Flagger<'_>, flag: &AtomicBool) {
+            flag.fetch_or(true, Ordering::AcqRel);
+        }
+    }
+
+    async fn standalone(_: Flagger<'_>, flag: &AtomicBool) {
+        flag.fetch_or(true, Ordering::AcqRel);
+    }
+
+    #[async_trait]
+    trait SelfTrait {
+        async fn async_trait(self, flag: &AtomicBool);
+    }
+
+    #[async_trait]
+    impl SelfTrait for Flagger<'_> {
+        async fn async_trait(self, flag: &AtomicBool) {
+            flag.fetch_or(true, Ordering::AcqRel);
+        }
+    }
+
+    #[test]
+    fn test_drop_order() {
+        // 0 : 0 ^ 1 = 1 | 1 = 1 (if flagger then block)
+        // 0 : 0 | 1 = 1 ^ 1 = 0 (if block then flagger)
+
+        let flag = AtomicBool::new(false);
+        executor::block_on_simple(standalone(Flagger(&flag), &flag));
+        assert!(!flag.load(Ordering::Acquire));
+
+        executor::block_on_simple(Struct::async_trait(Flagger(&flag), &flag));
+        assert!(!flag.load(Ordering::Acquire));
+
+        executor::block_on_simple(Flagger(&flag).async_trait(&flag));
+        assert!(!flag.load(Ordering::Acquire));
+    }
+}
