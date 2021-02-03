@@ -157,6 +157,23 @@ pub(crate) unsafe trait UnsafeTraitPubCrate {}
 #[async_trait]
 unsafe trait UnsafeTraitPrivate {}
 
+pub async fn test_can_destruct() {
+    #[async_trait]
+    trait CanDestruct {
+        async fn f(&self, foos: (u8, u8, u8, u8));
+    }
+
+    #[async_trait]
+    impl CanDestruct for Struct {
+        async fn f(&self, (a, ref mut b, ref c, d): (u8, u8, u8, u8)) {
+            let _a: u8 = a;
+            let _b: &mut u8 = b;
+            let _c: &u8 = c;
+            let _d: u8 = d;
+        }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;

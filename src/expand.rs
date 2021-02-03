@@ -1,12 +1,14 @@
 use crate::lifetime::{has_async_lifetime, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{
-    has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver, ReplaceSelf,
+    mut_pat, has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver,
+    ReplaceSelf,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::mem;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
@@ -226,8 +228,10 @@ fn transform_sig(
                     ident.by_ref = None;
                     ident.mutability = None;
                 } else {
-                    let positional = positional_arg(i);
-                    *arg.pat = parse_quote!(#positional);
+                    let span = arg.pat.span();
+                    let positional = positional_arg(i, span);
+                    let m = mut_pat(&mut arg.pat);
+                    arg.pat = parse_quote!(#m #positional);
                 }
             }
         }
@@ -247,14 +251,15 @@ fn transform_sig(
 }
 
 // Input:
-//     async fn f<T>(&self, x: &T) -> Ret {
-//         self + x
+//     async fn f<T>(&self, x: &T, (a, b): (A, B)) -> Ret {
+//         self + x + a + b
 //     }
 //
 // Output:
 //     Box::pin(async move {
 //         let __self = self;
 //         let x = x;
+//         let (a, b) = __arg1;
 //
 //         __self + x
 //     })
@@ -268,50 +273,45 @@ fn transform_block(
         }
     }
 
-    let args = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
+    let self_prefix = "__";
+    let decls = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
         FnArg::Receiver(Receiver { self_token, mutability, .. }) => {
-            (*mutability, quote!(#self_token))
+            let mut ident = format_ident!("{}self", self_prefix);
+            ident.set_span(self_token.span());
+            quote!(let #mutability #ident = #self_token;)
         }
         FnArg::Typed(arg) => {
             if let Pat::Ident(PatIdent { ident, mutability, .. }) = &*arg.pat {
-                (*mutability, quote!(#ident))
+                if ident == "self" {
+                    let prefixed = format_ident!("{}{}", self_prefix, ident);
+                    quote!(let #mutability #prefixed = #ident;)
+                } else {
+                    quote!(let #mutability #ident = #ident;)
+                }
             } else {
-                (None, positional_arg(i).into_token_stream())
+                let pat = &arg.pat;
+                let ident = positional_arg(i, pat.span());
+                quote!(let #pat = #ident;)
             }
         }
     });
 
-    let self_prefix = "__";
-    let pats = args.clone().map(|(mutability, name)| {
-        use syn::spanned::Spanned;
-
-        let name_str = name.to_string();
-        if name_str == "self" {
-            let mut ident = format_ident!("{}{}", self_prefix, name_str);
-            ident.set_span(name.span());
-            quote!(#mutability #ident)
-        } else {
-            quote!(#mutability #name)
-        }
-    });
-
-
-    let args = args.map(|(_, name)| name);
     let mut replace_self = ReplaceSelf(self_prefix);
     replace_self.visit_block_mut(block);
 
+    let stmts = &block.stmts;
     let new_block = quote_spanned!(block.brace_token.span=> {
         Box::pin(async move {
-            #(let #pats = #args;)*
-            #block
+            #(#decls)*
+            #(#stmts)*
         })
     });
 
     *block = parse_quote!(#new_block);
 }
 
-fn positional_arg(i: usize) -> Ident {
-    format_ident!("__arg{}", i)
+fn positional_arg(i: usize, span: Span) -> Ident {
+    format_ident!("__arg{}", i, span = span)
 }
 
 fn has_bound(supertraits: &Supertraits, marker: &Ident) -> bool {

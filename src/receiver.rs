@@ -7,8 +7,8 @@ use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, Block, Error, ExprPath, ExprStruct, Ident, Item, Macro, PatPath, PatStruct,
-    PatTupleStruct, Path, PathArguments, QSelf, Receiver, Signature, Token, Type, TypePath,
-    WherePredicate,
+    PatIdent, PatTupleStruct, Pat, Path, PathArguments, QSelf, Receiver, Signature, Token, Type,
+    TypePath, WherePredicate,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -35,6 +35,24 @@ fn has_self_in_token_stream(tokens: TokenStream) -> bool {
         TokenTree::Group(group) => has_self_in_token_stream(group.stream()),
         _ => false,
     })
+}
+
+pub fn mut_pat(pat: &mut Pat) -> Option<Token![mut]> {
+    let mut visitor = HasMutPat(None);
+    visitor.visit_pat_mut(pat);
+    visitor.0
+}
+
+struct HasMutPat(Option<Token![mut]>);
+
+impl VisitMut for HasMutPat {
+    fn visit_pat_ident_mut(&mut self, i: &mut PatIdent) {
+        if let Some(m) = i.mutability {
+            self.0 = Some(m);
+        } else {
+            visit_mut::visit_pat_ident_mut(self, i);
+        }
+    }
 }
 
 struct HasSelf(bool);
