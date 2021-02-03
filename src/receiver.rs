@@ -96,7 +96,7 @@ impl VisitMut for HasSelf {
     }
 }
 
-pub struct ReplaceSelf<'a>(pub &'a str);
+pub struct ReplaceSelf<'a>(pub &'a str, pub Span);
 
 impl ReplaceSelf<'_> {
     fn visit_token_stream(&mut self, tt: TokenStream) -> TokenStream {
@@ -120,21 +120,14 @@ impl VisitMut for ReplaceSelf<'_> {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         if i == "self" {
             *i = quote::format_ident!("{}{}", self.0, i);
+            i.set_span(self.1);
         }
 
         visit_mut::visit_ident_mut(self, i);
     }
 
     fn visit_macro_mut(&mut self, mac: &mut Macro) {
-        // We can't tell in general whether `self` inside a macro invocation
-        // refers to the self in the argument list or a different self
-        // introduced within the macro. Heuristic: if the macro input contains
-        // `fn`, then `self` is more likely to refer to something other than the
-        // outer function's self argument.
-        if !contains_fn(mac.tokens.clone()) {
-            mac.tokens = self.visit_token_stream(mac.tokens.clone());
-        }
-
+        mac.tokens = self.visit_token_stream(mac.tokens.clone());
         visit_mut::visit_macro_mut(self, mac);
     }
 }

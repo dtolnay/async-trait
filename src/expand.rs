@@ -73,7 +73,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let mut has_self = has_self_in_sig(sig);
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(sig, block, has_self);
+                            transform_block(sig, block);
                             method
                                 .attrs
                                 .push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
@@ -104,7 +104,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(sig, block, has_self);
+                        transform_block(sig, block);
                         transform_sig(context, sig, has_self, false, is_local);
                         method
                             .attrs
@@ -270,7 +270,6 @@ fn transform_sig(
 fn transform_block(
     sig: &mut Signature,
     block: &mut Block,
-    has_self: bool
 ) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
@@ -279,15 +278,18 @@ fn transform_block(
     }
 
     let self_prefix = "__";
+    let mut self_span = None;
     let decls = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
         FnArg::Receiver(Receiver { self_token, mutability, .. }) => {
             let mut ident = format_ident!("{}self", self_prefix);
             ident.set_span(self_token.span());
+            self_span = Some(self_token.span());
             quote!(let #mutability #ident = #self_token;)
         }
         FnArg::Typed(arg) => {
             if let Pat::Ident(PatIdent { ident, mutability, .. }) = &*arg.pat {
                 if ident == "self" {
+                    self_span = Some(ident.span());
                     let prefixed = format_ident!("{}{}", self_prefix, ident);
                     quote!(let #mutability #prefixed = #ident;)
                 } else {
@@ -299,10 +301,10 @@ fn transform_block(
                 quote!(let #pat = #ident;)
             }
         }
-    });
+    }).collect::<Vec<_>>();
 
-    if has_self {
-        let mut replace_self = ReplaceSelf(self_prefix);
+    if let Some(span) = self_span {
+        let mut replace_self = ReplaceSelf(self_prefix, span);
         replace_self.visit_block_mut(block);
     }
 
