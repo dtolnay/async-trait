@@ -199,6 +199,32 @@ pub async fn test_inference() {
     }
 }
 
+pub async fn test_internal_items() {
+    #[async_trait]
+    #[allow(dead_code)]
+    pub trait Trait: Sized {
+        async fn f(self) {
+            struct Struct;
+
+            impl Struct {
+                fn f(self) {
+                    let _ = self;
+                }
+            }
+        }
+    }
+}
+
+pub async fn test_unimplemented() {
+    #[async_trait]
+    #[allow(unreachable_code)]
+    pub trait Trait {
+        async fn f() {
+            unimplemented!()
+        }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;

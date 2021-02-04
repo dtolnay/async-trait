@@ -126,6 +126,17 @@ impl VisitMut for ReplaceSelf<'_> {
         visit_mut::visit_ident_mut(self, i);
     }
 
+    fn visit_item_mut(&mut self, i: &mut Item) {
+        match i {
+            // Visit `macro_rules!` because locally defined macros can refer to `self`.
+            Item::Macro(i) if i.mac.path.is_ident("macro_rules") => {
+                self.visit_macro_mut(&mut i.mac)
+            }
+            // Otherwise, do not recurse into nested items.
+            _ => {}
+        }
+    }
+
     fn visit_macro_mut(&mut self, mac: &mut Macro) {
         mac.tokens = self.visit_token_stream(mac.tokens.clone());
         visit_mut::visit_macro_mut(self, mac);
