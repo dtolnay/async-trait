@@ -201,7 +201,7 @@ pub async fn test_inference() {
 
 pub async fn test_internal_items() {
     #[async_trait]
-    #[allow(dead_code)]
+    #[allow(dead_code, clippy::items_after_statements)]
     pub trait Trait: Sized {
         async fn f(self) {
             struct Struct;
