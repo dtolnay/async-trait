@@ -321,6 +321,7 @@ fn transform_block(
                 #(#stmts)*
             };
 
+            #[allow(unreachable_code)]
             __ret
         })
     );
