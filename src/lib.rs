@@ -303,8 +303,6 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 
-#![allow(unused_imports, dead_code)]
-
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
@@ -323,7 +321,6 @@ mod expand;
 mod lifetime;
 mod parse;
 mod receiver;
-mod respan;
 
 use crate::args::Args;
 use crate::expand::expand;

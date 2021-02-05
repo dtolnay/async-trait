@@ -1,25 +1,6 @@
 use proc_macro2::Span;
 use syn::visit_mut::{self, VisitMut};
-use syn::{Block, GenericArgument, Item, Lifetime, Receiver, Signature, TypeReference};
-
-pub fn has_async_lifetime(sig: &mut Signature, block: &mut Block) -> bool {
-    let mut visitor = HasAsyncLifetime(false);
-    visitor.visit_signature_mut(sig);
-    visitor.visit_block_mut(block);
-    visitor.0
-}
-
-struct HasAsyncLifetime(bool);
-
-impl VisitMut for HasAsyncLifetime {
-    fn visit_lifetime_mut(&mut self, life: &mut Lifetime) {
-        self.0 |= life.to_string() == "'async_trait";
-    }
-
-    fn visit_item_mut(&mut self, _: &mut Item) {
-        // Do not recurse into nested items.
-    }
-}
+use syn::{GenericArgument, Lifetime, Receiver, TypeReference};
 
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,

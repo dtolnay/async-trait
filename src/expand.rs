@@ -1,18 +1,14 @@
-use crate::lifetime::{has_async_lifetime, CollectLifetimes};
+use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
-use crate::receiver::{
-    mut_pat, has_self_in_block, has_self_in_sig, has_self_in_where_predicate, ReplaceReceiver,
-    ReplaceSelf,
-};
+use crate::receiver::{ mut_pat, has_self_in_block, has_self_in_sig, ReplaceSelf};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
-use std::mem;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
-    Path, Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParam, TypeParamBound,
+    Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound,
     WhereClause,
 };
 
@@ -28,14 +24,11 @@ impl ToTokens for Item {
 #[derive(Clone, Copy)]
 enum Context<'a> {
     Trait {
-        name: &'a Ident,
         generics: &'a Generics,
         supertraits: &'a Supertraits,
     },
     Impl {
         impl_generics: &'a Generics,
-        receiver: &'a Type,
-        as_trait: &'a Path,
     },
 }
 
@@ -61,7 +54,6 @@ pub fn expand(input: &mut Item, is_local: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
-                name: &input.ident,
                 generics: &input.generics,
                 supertraits: &input.supertraits,
             };
@@ -95,8 +87,6 @@ pub fn expand(input: &mut Item, is_local: bool) {
 
             let context = Context::Impl {
                 impl_generics: &input.generics,
-                receiver: &input.self_ty,
-                as_trait: &input.trait_.as_ref().unwrap().1,
             };
             for inner in &mut input.items {
                 if let ImplItem::Method(method) = inner {
