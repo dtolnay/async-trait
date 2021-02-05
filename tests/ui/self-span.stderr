@@ -1,10 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/self-span.rs:16:21
+  --> $DIR/self-span.rs:17:21
    |
-16 |     async fn method(self) {
-   |                     ^^^^ expected `()`, found struct `S`
 17 |         let _: () = self;
-   |                -- expected due to this
+   |                --   ^^^^ expected `()`, found struct `S`
+   |                |
+   |                expected due to this
 
 error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/self-span.rs:18:23
@@ -13,12 +13,12 @@ error: the `Self` constructor can only be used with tuple or unit structs
    |                       ^^^^ help: use curly brackets: `Self { /* fields */ }`
 
 error[E0308]: mismatched types
-  --> $DIR/self-span.rs:24:21
+  --> $DIR/self-span.rs:25:21
    |
-24 |     async fn method(self) {
-   |                     ^^^^ expected `()`, found enum `E`
 25 |         let _: () = self;
-   |                -- expected due to this
+   |                --   ^^^^ expected `()`, found enum `E`
+   |                |
+   |                expected due to this
 
 error[E0533]: expected unit struct, unit variant or constant, found struct variant `Self::V`
   --> $DIR/self-span.rs:26:23

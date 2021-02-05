@@ -108,6 +108,7 @@ impl VisitMut for ReplaceSelf<'_> {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         if i == "self" {
             *i = quote::format_ident!("{}{}", self.0, i);
+            #[cfg(self_span_hack)]
             i.set_span(self.1);
         }
 
