@@ -1,0 +1,27 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/lifetime-span.rs:12:6
+   |
+12 | impl Trait for A {
+   |      ^^^^^- help: indicate the anonymous lifetime: `<'_>`
+
+error[E0195]: lifetime parameters or bounds on method `method` do not match the trait declaration
+  --> $DIR/lifetime-span.rs:11:1
+   |
+6  | #[async_trait]
+   | -------------- lifetimes in impl do not match this method in trait
+...
+11 | #[async_trait]
+   | ^^^^^^^^^^^^^^ lifetimes do not match method in trait
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0195]: lifetime parameters or bounds on method `method` do not match the trait declaration
+  --> $DIR/lifetime-span.rs:16:1
+   |
+6  | #[async_trait]
+   | -------------- lifetimes in impl do not match this method in trait
+...
+16 | #[async_trait]
+   | ^^^^^^^^^^^^^^ lifetimes do not match method in trait
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
