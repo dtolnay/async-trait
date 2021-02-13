@@ -64,6 +64,16 @@ impl Context<'_> {
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
 pub fn expand(input: &mut Item, is_local: bool) {
+    let inner_method_attrs = &[
+        parse_quote!(#[allow(clippy::used_underscore_binding)]),
+        parse_quote!(#[allow(clippy::type_repetition_in_bounds)]),
+    ];
+
+    let trait_method_attrs = &[
+        parse_quote!(#[must_use]),
+        parse_quote!(#[allow(clippy::type_repetition_in_bounds)]),
+    ];
+
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -79,13 +89,11 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(sig, block);
-                            method
-                                .attrs
-                                .push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
+                            method.attrs.extend_from_slice(inner_method_attrs);
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
-                        method.attrs.push(parse_quote!(#[must_use]));
+                        method.attrs.extend_from_slice(trait_method_attrs);
                     }
                 }
             }
@@ -109,9 +117,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(sig, block);
                         transform_sig(context, sig, has_self, false, is_local);
-                        method
-                            .attrs
-                            .push(parse_quote!(#[allow(clippy::used_underscore_binding)]));
+                        method.attrs.extend_from_slice(inner_method_attrs);
                     }
                 }
             }
@@ -192,13 +198,16 @@ fn transform_sig(
 
     push_param(&mut sig.generics, parse_quote_spanned!(default_span => 'async_trait));
 
+    let first_bound = where_clause_or_default(&mut sig.generics.where_clause).predicates.first();
+    let bound_span = first_bound.map_or(default_span, Spanned::span);
+
     if has_self {
         let bound: Ident = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => parse_quote!(Sync),
+            })) => parse_quote_spanned!(bound_span => Sync),
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -207,19 +216,21 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                parse_quote!(Sync)
+                parse_quote_spanned!(bound_span => Sync)
             }
-            _ => parse_quote!(Send),
+            _ => parse_quote_spanned!(bound_span => Send),
         };
+
         let assume_bound = match context {
             Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
             Context::Impl { .. } => true,
         };
+
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
         where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote_spanned!(where_clause.span() => Self: 'async_trait)
+            parse_quote_spanned!(bound_span => Self: 'async_trait)
         } else {
-            parse_quote_spanned!(where_clause.span() => Self: ::core::marker::#bound + 'async_trait)
+            parse_quote_spanned!(bound_span => Self: ::core::marker::#bound + 'async_trait)
         });
     }
 
