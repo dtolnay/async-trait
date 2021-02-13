@@ -12,6 +12,12 @@ use syn::{
     WhereClause,
 };
 
+macro_rules! parse_quote_spanned {
+    ($span:expr => $($t:tt)*) => (
+        syn::parse2(quote_spanned!($span => $($t)*)).unwrap()
+    )
+}
+
 impl ToTokens for Item {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
@@ -21,7 +27,7 @@ impl ToTokens for Item {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum Context<'a> {
     Trait {
         generics: &'a Generics,
@@ -45,6 +51,13 @@ impl Context<'_> {
                 false
             }
         })
+    }
+
+    fn generics_span(&self) -> Span {
+        match self {
+            Context::Trait { generics, .. } => generics.span(),
+            Context::Impl { impl_generics } => impl_generics.span(),
+        }
     }
 }
 
@@ -78,7 +91,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
             }
         }
         Item::Impl(input) => {
-            let mut lifetimes = CollectLifetimes::new("'impl");
+            let mut lifetimes = CollectLifetimes::new("'impl", input.generics.span());
             lifetimes.visit_type_mut(&mut *input.self_ty);
             lifetimes.visit_path_mut(&mut input.trait_.as_mut().unwrap().1);
             let params = &input.generics.params;
@@ -133,7 +146,11 @@ fn transform_sig(
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
-    let mut lifetimes = CollectLifetimes::new("'life");
+    let default_span = sig.ident.span()
+        .join(sig.paren_token.span)
+        .unwrap_or_else(|| sig.ident.span());
+
+    let mut lifetimes = CollectLifetimes::new("'life", default_span);
     for arg in sig.inputs.iter_mut() {
         match arg {
             FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
@@ -141,13 +158,6 @@ fn transform_sig(
         }
     }
 
-    let where_clause = sig
-        .generics
-        .where_clause
-        .get_or_insert_with(|| WhereClause {
-            where_token: Default::default(),
-            predicates: Punctuated::new(),
-        });
     for param in sig
         .generics
         .params
@@ -157,26 +167,31 @@ fn transform_sig(
         match param {
             GenericParam::Type(param) => {
                 let param = &param.ident;
-                where_clause
+                let span = param.span();
+                where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote!(#param: 'async_trait));
+                    .push(parse_quote_spanned!(span => #param: 'async_trait));
             }
             GenericParam::Lifetime(param) => {
                 let param = &param.lifetime;
-                where_clause
+                let span = param.span();
+                where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote!(#param: 'async_trait));
+                    .push(parse_quote_spanned!(span => #param: 'async_trait));
             }
             GenericParam::Const(_) => {}
         }
     }
+
     for elided in lifetimes.elided {
-        sig.generics.params.push(parse_quote!(#elided));
-        where_clause
+        push_param(&mut sig.generics, parse_quote!(#elided));
+        where_clause_or_default(&mut sig.generics.where_clause)
             .predicates
-            .push(parse_quote!(#elided: 'async_trait));
+            .push(parse_quote_spanned!(elided.span() => #elided: 'async_trait));
     }
-    sig.generics.params.push(parse_quote!('async_trait));
+
+    push_param(&mut sig.generics, parse_quote_spanned!(default_span => 'async_trait));
+
     if has_self {
         let bound: Ident = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
@@ -200,10 +215,11 @@ fn transform_sig(
             Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
             Context::Impl { .. } => true,
         };
+        let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
         where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote!(Self: 'async_trait)
+            parse_quote_spanned!(where_clause.span() => Self: 'async_trait)
         } else {
-            parse_quote!(Self: ::core::marker::#bound + 'async_trait)
+            parse_quote_spanned!(where_clause.span() => Self: ::core::marker::#bound + 'async_trait)
         });
     }
 
@@ -228,9 +244,9 @@ fn transform_sig(
     }
 
     let bounds = if is_local {
-        quote!('async_trait)
+        quote_spanned!(context.generics_span() => 'async_trait)
     } else {
-        quote!(::core::marker::Send + 'async_trait)
+        quote_spanned!(context.generics_span() => ::core::marker::Send + 'async_trait)
     };
 
     sig.output = parse_quote! {
@@ -332,4 +348,21 @@ fn has_bound(supertraits: &Supertraits, marker: &Ident) -> bool {
         }
     }
     false
+}
+
+fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {
+    clause.get_or_insert_with(|| WhereClause {
+        where_token: Default::default(),
+        predicates: Punctuated::new(),
+    })
+}
+
+fn push_param(generics: &mut Generics, param: GenericParam) {
+    let span = param.span();
+    if generics.params.is_empty() {
+        generics.lt_token = parse_quote_spanned!(span => <);
+        generics.gt_token = parse_quote_spanned!(span => >);
+    }
+
+    generics.params.push(param);
 }

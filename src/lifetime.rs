@@ -1,4 +1,5 @@
 use proc_macro2::Span;
+use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
 use syn::{GenericArgument, Lifetime, Receiver, TypeReference};
 
@@ -6,35 +7,38 @@ pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
     pub name: &'static str,
+    pub default_span: Span,
 }
 
 impl CollectLifetimes {
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &'static str, default_span: Span) -> Self {
         CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
             name,
+            default_span,
         }
     }
 
     fn visit_opt_lifetime(&mut self, lifetime: &mut Option<Lifetime>) {
         match lifetime {
-            None => *lifetime = Some(self.next_lifetime()),
+            None => *lifetime = Some(self.next_lifetime(None)),
             Some(lifetime) => self.visit_lifetime(lifetime),
         }
     }
 
     fn visit_lifetime(&mut self, lifetime: &mut Lifetime) {
         if lifetime.ident == "_" {
-            *lifetime = self.next_lifetime();
+            *lifetime = self.next_lifetime(lifetime.span());
         } else {
             self.explicit.push(lifetime.clone());
         }
     }
 
-    fn next_lifetime(&mut self) -> Lifetime {
+    fn next_lifetime<S: Into<Option<Span>>>(&mut self, span: S) -> Lifetime {
         let name = format!("{}{}", self.name, self.elided.len());
-        let life = Lifetime::new(&name, Span::call_site());
+        let span = span.into().unwrap_or(self.default_span);
+        let life = Lifetime::new(&name, span);
         self.elided.push(life.clone());
         life
     }
