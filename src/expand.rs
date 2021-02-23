@@ -27,7 +27,7 @@ impl ToTokens for Item {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 enum Context<'a> {
     Trait {
         generics: &'a Generics,
