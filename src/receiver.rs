@@ -113,8 +113,6 @@ impl VisitMut for ReplaceSelf<'_> {
             #[cfg(self_span_hack)]
             i.set_span(self.1);
         }
-
-        visit_mut::visit_ident_mut(self, i);
     }
 
     fn visit_item_mut(&mut self, i: &mut Item) {
@@ -129,6 +127,5 @@ impl VisitMut for ReplaceSelf<'_> {
 
     fn visit_macro_mut(&mut self, mac: &mut Macro) {
         mac.tokens = self.visit_token_stream(mac.tokens.clone());
-        visit_mut::visit_macro_mut(self, mac);
     }
 }
