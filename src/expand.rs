@@ -12,8 +12,8 @@ use syn::{
 };
 
 macro_rules! parse_quote_spanned {
-    ($span:expr => $($t:tt)*) => {
-        syn::parse2(quote_spanned!($span => $($t)*)).unwrap()
+    ($span:expr=> $($t:tt)*) => {
+        syn::parse2(quote_spanned!($span=> $($t)*)).unwrap()
     };
 }
 
@@ -179,14 +179,14 @@ fn transform_sig(
                 let span = param.span();
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span => #param: 'async_trait));
+                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
             }
             GenericParam::Lifetime(param) => {
                 let param = &param.lifetime;
                 let span = param.span();
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span => #param: 'async_trait));
+                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
             }
             GenericParam::Const(_) => {}
         }
@@ -196,12 +196,12 @@ fn transform_sig(
         push_param(&mut sig.generics, parse_quote!(#elided));
         where_clause_or_default(&mut sig.generics.where_clause)
             .predicates
-            .push(parse_quote_spanned!(elided.span() => #elided: 'async_trait));
+            .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
     }
 
     push_param(
         &mut sig.generics,
-        parse_quote_spanned!(default_span => 'async_trait),
+        parse_quote_spanned!(default_span=> 'async_trait),
     );
 
     let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
@@ -215,7 +215,7 @@ fn transform_sig(
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => parse_quote_spanned!(bound_span => Sync),
+            })) => parse_quote_spanned!(bound_span=> Sync),
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -224,9 +224,9 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                parse_quote_spanned!(bound_span => Sync)
+                parse_quote_spanned!(bound_span=> Sync)
             }
-            _ => parse_quote_spanned!(bound_span => Send),
+            _ => parse_quote_spanned!(bound_span=> Send),
         };
 
         let assume_bound = match context {
@@ -236,9 +236,9 @@ fn transform_sig(
 
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
         where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote_spanned!(bound_span => Self: 'async_trait)
+            parse_quote_spanned!(bound_span=> Self: 'async_trait)
         } else {
-            parse_quote_spanned!(bound_span => Self: ::core::marker::#bound + 'async_trait)
+            parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
         });
     }
 
@@ -389,8 +389,8 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 fn push_param(generics: &mut Generics, param: GenericParam) {
     let span = param.span();
     if generics.params.is_empty() {
-        generics.lt_token = parse_quote_spanned!(span => <);
-        generics.gt_token = parse_quote_spanned!(span => >);
+        generics.lt_token = parse_quote_spanned!(span=> <);
+        generics.gt_token = parse_quote_spanned!(span=> >);
     }
 
     generics.params.push(param);
