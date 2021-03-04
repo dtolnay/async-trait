@@ -75,6 +75,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
+                        method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(sig, block);
@@ -84,7 +85,6 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
-                        method.attrs.push(parse_quote!(#[must_use]));
                         method
                             .attrs
                             .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
