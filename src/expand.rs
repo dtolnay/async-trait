@@ -66,13 +66,11 @@ pub fn expand(input: &mut Item, is_local: bool) {
     let inner_method_attrs = &[
         parse_quote!(#[allow(clippy::used_underscore_binding)]),
         parse_quote!(#[allow(clippy::type_repetition_in_bounds)]),
-        parse_quote!(#[allow(clippy::let_unit_value)]),
     ];
 
     let trait_method_attrs = &[
         parse_quote!(#[must_use]),
         parse_quote!(#[allow(clippy::type_repetition_in_bounds)]),
-        parse_quote!(#[allow(clippy::let_unit_value)]),
     ];
 
     match input {
@@ -352,7 +350,6 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
         Box::pin(async move {
             let __ret: #ret_ty = {
                 #(#decls)*
-                let __async_trait: ();
                 #(#stmts)*
             };
 
