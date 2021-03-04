@@ -126,6 +126,13 @@ impl VisitMut for ReplaceSelf<'_> {
     }
 
     fn visit_macro_mut(&mut self, mac: &mut Macro) {
-        mac.tokens = self.visit_token_stream(mac.tokens.clone());
+        // We can't tell in general whether `self` inside a macro invocation
+        // refers to the self in the argument list or a different self
+        // introduced within the macro. Heuristic: if the macro input contains
+        // `fn`, then `self` is more likely to refer to something other than the
+        // outer function's self argument.
+        if !contains_fn(mac.tokens.clone()) {
+            mac.tokens = self.visit_token_stream(mac.tokens.clone());
+        }
     }
 }
