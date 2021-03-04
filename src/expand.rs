@@ -210,12 +210,12 @@ fn transform_sig(
     let bound_span = first_bound.map_or(default_span, Spanned::span);
 
     if has_self {
-        let bound: Ident = match sig.inputs.iter().next() {
+        let bound = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => parse_quote_spanned!(bound_span=> Sync),
+            })) => Ident::new("Sync", bound_span),
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -224,9 +224,9 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                parse_quote_spanned!(bound_span=> Sync)
+                Ident::new("Sync", bound_span)
             }
-            _ => parse_quote_spanned!(bound_span=> Send),
+            _ => Ident::new("Send", bound_span),
         };
 
         let assume_bound = match context {
