@@ -82,12 +82,13 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             method
                                 .attrs
                                 .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds, clippy::used_underscore_binding)]));
+                        } else {
+                            method
+                                .attrs
+                                .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
-                        method
-                            .attrs
-                            .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
                     }
                 }
             }
