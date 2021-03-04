@@ -1,6 +1,6 @@
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
-use crate::receiver::{ mut_pat, has_self_in_block, has_self_in_sig, ReplaceSelf};
+use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::punctuated::Punctuated;
@@ -8,14 +8,13 @@ use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
-    Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound,
-    WhereClause,
+    Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound, WhereClause,
 };
 
 macro_rules! parse_quote_spanned {
-    ($span:expr => $($t:tt)*) => (
+    ($span:expr => $($t:tt)*) => {
         syn::parse2(quote_spanned!($span => $($t)*)).unwrap()
-    )
+    };
 }
 
 impl ToTokens for Item {
@@ -154,7 +153,9 @@ fn transform_sig(
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
-    let default_span = sig.ident.span()
+    let default_span = sig
+        .ident
+        .span()
         .join(sig.paren_token.span)
         .unwrap_or_else(|| sig.ident.span());
 
@@ -198,9 +199,14 @@ fn transform_sig(
             .push(parse_quote_spanned!(elided.span() => #elided: 'async_trait));
     }
 
-    push_param(&mut sig.generics, parse_quote_spanned!(default_span => 'async_trait));
+    push_param(
+        &mut sig.generics,
+        parse_quote_spanned!(default_span => 'async_trait),
+    );
 
-    let first_bound = where_clause_or_default(&mut sig.generics.where_clause).predicates.first();
+    let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
+        .predicates
+        .first();
     let bound_span = first_bound.map_or(default_span, Spanned::span);
 
     if has_self {
@@ -286,10 +292,7 @@ fn transform_sig(
 //
 //         ___ret
 //     })
-fn transform_block(
-    sig: &mut Signature,
-    block: &mut Block,
-) {
+fn transform_block(sig: &mut Signature, block: &mut Block) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
@@ -298,29 +301,41 @@ fn transform_block(
 
     let self_prefix = "__";
     let mut self_span = None;
-    let decls = sig.inputs.iter().enumerate().map(|(i, arg)| match arg {
-        FnArg::Receiver(Receiver { self_token, mutability, .. }) => {
-            let mut ident = format_ident!("{}self", self_prefix);
-            ident.set_span(self_token.span());
-            self_span = Some(self_token.span());
-            quote!(let #mutability #ident = #self_token;)
-        }
-        FnArg::Typed(arg) => {
-            if let Pat::Ident(PatIdent { ident, mutability, .. }) = &*arg.pat {
-                if ident == "self" {
-                    self_span = Some(ident.span());
-                    let prefixed = format_ident!("{}{}", self_prefix, ident);
-                    quote!(let #mutability #prefixed = #ident;)
-                } else {
-                    quote!(let #mutability #ident = #ident;)
-                }
-            } else {
-                let pat = &arg.pat;
-                let ident = positional_arg(i, pat.span());
-                quote!(let #pat = #ident;)
+    let decls = sig
+        .inputs
+        .iter()
+        .enumerate()
+        .map(|(i, arg)| match arg {
+            FnArg::Receiver(Receiver {
+                self_token,
+                mutability,
+                ..
+            }) => {
+                let mut ident = format_ident!("{}self", self_prefix);
+                ident.set_span(self_token.span());
+                self_span = Some(self_token.span());
+                quote!(let #mutability #ident = #self_token;)
             }
-        }
-    }).collect::<Vec<_>>();
+            FnArg::Typed(arg) => {
+                if let Pat::Ident(PatIdent {
+                    ident, mutability, ..
+                }) = &*arg.pat
+                {
+                    if ident == "self" {
+                        self_span = Some(ident.span());
+                        let prefixed = format_ident!("{}{}", self_prefix, ident);
+                        quote!(let #mutability #prefixed = #ident;)
+                    } else {
+                        quote!(let #mutability #ident = #ident;)
+                    }
+                } else {
+                    let pat = &arg.pat;
+                    let ident = positional_arg(i, pat.span());
+                    quote!(let #pat = #ident;)
+                }
+            }
+        })
+        .collect::<Vec<_>>();
 
     if let Some(span) = self_span {
         let mut replace_self = ReplaceSelf(self_prefix, span);

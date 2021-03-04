@@ -184,9 +184,15 @@ pub async fn test_self_in_macro() {
 
     #[async_trait]
     impl Trait for String {
-        async fn a(self) { println!("{}", self); }
-        async fn b(&mut self) { println!("{}", self); }
-        async fn c(&self) { println!("{}", self); }
+        async fn a(self) {
+            println!("{}", self);
+        }
+        async fn b(&mut self) {
+            println!("{}", self);
+        }
+        async fn c(&self) {
+            println!("{}", self);
+        }
     }
 }
 
@@ -1154,9 +1160,9 @@ pub mod issue134 {
 
 // https://github.com/dtolnay/async-trait/pull/125#pullrequestreview-491880881
 pub mod drop_order {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use async_trait::async_trait;
     use crate::executor;
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     struct Flagger<'a>(&'a AtomicBool);
 

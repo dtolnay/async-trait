@@ -1,8 +1,8 @@
 use proc_macro2::{Group, Span, TokenStream, TokenTree};
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    Block, ExprPath, Ident, Item, Macro, PatPath, PatIdent, Pat, Receiver,
-    Signature, Token, TypePath,
+    Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, PatPath, Receiver, Signature, Token,
+    TypePath,
 };
 
 pub fn has_self_in_sig(sig: &mut Signature) -> bool {
@@ -88,19 +88,21 @@ pub struct ReplaceSelf<'a>(pub &'a str, pub Span);
 
 impl ReplaceSelf<'_> {
     fn visit_token_stream(&mut self, tt: TokenStream) -> TokenStream {
-        tt.into_iter().map(|tt| match tt {
-            TokenTree::Ident(mut ident) => {
-                self.visit_ident_mut(&mut ident);
-                TokenTree::Ident(ident)
-            }
-            TokenTree::Group(group) => {
-                let tt = self.visit_token_stream(group.stream());
-                let mut new = Group::new(group.delimiter(), tt);
-                new.set_span(group.span());
-                TokenTree::Group(new)
-            }
-            tt => tt,
-        }).collect()
+        tt.into_iter()
+            .map(|tt| match tt {
+                TokenTree::Ident(mut ident) => {
+                    self.visit_ident_mut(&mut ident);
+                    TokenTree::Ident(ident)
+                }
+                TokenTree::Group(group) => {
+                    let tt = self.visit_token_stream(group.stream());
+                    let mut new = Group::new(group.delimiter(), tt);
+                    new.set_span(group.span());
+                    TokenTree::Group(new)
+                }
+                tt => tt,
+            })
+            .collect()
     }
 }
 
