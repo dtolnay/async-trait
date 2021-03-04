@@ -64,8 +64,7 @@ type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
 pub fn expand(input: &mut Item, is_local: bool) {
     let inner_method_attrs = &[
-        parse_quote!(#[allow(clippy::used_underscore_binding)]),
-        parse_quote!(#[allow(clippy::type_repetition_in_bounds)]),
+        parse_quote!(#[allow(clippy::type_repetition_in_bounds, clippy::used_underscore_binding)]),
     ];
 
     let trait_method_attrs = &[
