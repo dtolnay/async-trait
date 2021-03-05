@@ -51,13 +51,6 @@ impl Context<'_> {
             }
         })
     }
-
-    fn generics_span(&self) -> Span {
-        match self {
-            Context::Trait { generics, .. } => generics.span(),
-            Context::Impl { impl_generics } => impl_generics.span(),
-        }
-    }
 }
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
@@ -258,13 +251,13 @@ fn transform_sig(
         }
     }
 
+    let ret_span = sig.ident.span();
     let bounds = if is_local {
-        quote_spanned!(context.generics_span() => 'async_trait)
+        quote_spanned!(ret_span=> 'async_trait)
     } else {
-        quote_spanned!(context.generics_span() => ::core::marker::Send + 'async_trait)
+        quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
-
-    sig.output = parse_quote! {
+    sig.output = parse_quote_spanned! {ret_span=>
         -> ::core::pin::Pin<Box<
             dyn ::core::future::Future<Output = #ret> + #bounds
         >>
