@@ -1218,3 +1218,18 @@ pub mod drop_order {
         assert!(!flag.load(Ordering::Acquire));
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/145
+pub mod issue145 {
+    #![deny(clippy::type_complexity)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait ManageConnection: Sized + Send + Sync + 'static {
+        type Connection: Send + 'static;
+        type Error: Send + 'static;
+
+        async fn connect(&self) -> Result<Self::Connection, Self::Error>;
+    }
+}
