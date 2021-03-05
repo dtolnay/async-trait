@@ -1244,11 +1244,17 @@ pub mod issue147 {
 
     #[async_trait]
     pub trait MyTrait {
-        async fn foo();
+        async fn x();
+        async fn y() -> ();
+        async fn z();
     }
 
     #[async_trait]
     impl MyTrait for MyType {
-        async fn foo() {}
+        async fn x() {}
+        async fn y() -> () {}
+        async fn z() {
+            unimplemented!()
+        }
     }
 }
