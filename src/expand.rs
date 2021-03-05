@@ -112,6 +112,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
 fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
+            clippy::let_unit_value,
             clippy::type_complexity,
             clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding
@@ -344,23 +345,19 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
     }
 
     let stmts = &block.stmts;
-    let ret_ty = match &sig.output {
-        ReturnType::Default => quote_spanned!(block.brace_token.span=> ()),
-        ReturnType::Type(_, ret) => quote!(#ret),
-    };
-
-    let box_pin = quote_spanned!(block.brace_token.span=>
-        Box::pin(async move {
-            let __ret: #ret_ty = {
-                #(#decls)*
-                #(#stmts)*
-            };
-
+    let let_ret = match &sig.output {
+        ReturnType::Default => quote_spanned! {block.brace_token.span=>
+            let _: () = { #(#decls)* #(#stmts)* };
+        },
+        ReturnType::Type(_, ret) => quote_spanned! {block.brace_token.span=>
+            let __ret: #ret = { #(#decls)* #(#stmts)* };
             #[allow(unreachable_code)]
             __ret
-        })
+        },
+    };
+    let box_pin = quote_spanned!(block.brace_token.span=>
+        Box::pin(async move { #let_ret })
     );
-
     block.stmts = parse_quote!(#box_pin);
 }
 

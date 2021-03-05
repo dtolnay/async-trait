@@ -1233,3 +1233,28 @@ pub mod issue145 {
         async fn connect(&self) -> Result<Self::Connection, Self::Error>;
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/147
+pub mod issue147 {
+    #![deny(clippy::let_unit_value)]
+
+    use async_trait::async_trait;
+
+    pub struct MyType;
+
+    #[async_trait]
+    pub trait MyTrait {
+        async fn x();
+        async fn y() -> ();
+        async fn z();
+    }
+
+    #[async_trait]
+    impl MyTrait for MyType {
+        async fn x() {}
+        async fn y() -> () {}
+        async fn z() {
+            unimplemented!()
+        }
+    }
+}
