@@ -88,6 +88,7 @@ impl VisitMut for HasSelf {
 pub struct ReplaceSelf(pub Span);
 
 impl ReplaceSelf {
+    #[cfg_attr(not(self_span_hack), allow(clippy::unused_self))]
     fn prepend_underscore_to_self(&self, ident: &mut Ident) -> bool {
         let modified = ident == "self";
         if modified {
