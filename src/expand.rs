@@ -112,6 +112,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
 fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
+            clippy::type_complexity,
             clippy::type_repetition_in_bounds,
             clippy::used_underscore_binding
         )]
@@ -120,7 +121,10 @@ fn lint_suppress_with_body() -> Attribute {
 
 fn lint_suppress_without_body() -> Attribute {
     parse_quote! {
-        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(
+            clippy::type_complexity,
+            clippy::type_repetition_in_bounds
+        )]
     }
 }
 
