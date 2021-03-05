@@ -295,7 +295,6 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
         }
     }
 
-    let self_prefix = "__";
     let mut self_span = None;
     let decls = sig
         .inputs
@@ -307,8 +306,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
                 mutability,
                 ..
             }) => {
-                let mut ident = format_ident!("{}self", self_prefix);
-                ident.set_span(self_token.span());
+                let ident = Ident::new("__self", self_token.span());
                 self_span = Some(self_token.span());
                 quote!(let #mutability #ident = #self_token;)
             }
@@ -319,7 +317,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
                 {
                     if ident == "self" {
                         self_span = Some(ident.span());
-                        let prefixed = format_ident!("{}{}", self_prefix, ident);
+                        let prefixed = Ident::new("__self", ident.span());
                         quote!(let #mutability #prefixed = #ident;)
                     } else {
                         quote!(let #mutability #ident = #ident;)
@@ -334,7 +332,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
         .collect::<Vec<_>>();
 
     if let Some(span) = self_span {
-        let mut replace_self = ReplaceSelf(self_prefix, span);
+        let mut replace_self = ReplaceSelf(span);
         replace_self.visit_block_mut(block);
     }
 

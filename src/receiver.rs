@@ -1,5 +1,4 @@
 use proc_macro2::{Group, Span, TokenStream, TokenTree};
-use quote::format_ident;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, PatPath, Receiver, Signature, Token,
@@ -85,9 +84,9 @@ impl VisitMut for HasSelf {
     }
 }
 
-pub struct ReplaceSelf<'a>(pub &'a str, pub Span);
+pub struct ReplaceSelf(pub Span);
 
-impl ReplaceSelf<'_> {
+impl ReplaceSelf {
     fn visit_token_stream(&mut self, tt: TokenStream) -> TokenStream {
         tt.into_iter()
             .map(|tt| match tt {
@@ -107,10 +106,10 @@ impl ReplaceSelf<'_> {
     }
 }
 
-impl VisitMut for ReplaceSelf<'_> {
+impl VisitMut for ReplaceSelf {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         if i == "self" {
-            *i = format_ident!("{}{}", self.0, i);
+            *i = Ident::new("__self", i.span());
             #[cfg(self_span_hack)]
             i.set_span(self.1);
         }
