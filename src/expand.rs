@@ -1,10 +1,9 @@
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{
     parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
@@ -87,7 +86,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
             }
         }
         Item::Impl(input) => {
-            let mut lifetimes = CollectLifetimes::new("'impl", input.generics.span());
+            let mut lifetimes = CollectLifetimes::new("'impl", input.impl_token.span);
             lifetimes.visit_type_mut(&mut *input.self_ty);
             lifetimes.visit_path_mut(&mut input.trait_.as_mut().unwrap().1);
             let params = &input.generics.params;
@@ -200,11 +199,7 @@ fn transform_sig(
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
-        let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .first();
-        let bound_span = first_bound.map_or(default_span, Spanned::span);
-
+        let bound_span = sig.ident.span();
         let bound = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
@@ -248,8 +243,7 @@ fn transform_sig(
                     ident.by_ref = None;
                     ident.mutability = None;
                 } else {
-                    let span = arg.pat.span();
-                    let positional = positional_arg(i, span);
+                    let positional = positional_arg(i, &arg.pat);
                     let m = mut_pat(&mut arg.pat);
                     arg.pat = parse_quote!(#m #positional);
                 }
@@ -305,8 +299,8 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
                 mutability,
                 ..
             }) => {
-                let ident = Ident::new("__self", self_token.span());
-                self_span = Some(self_token.span());
+                let ident = Ident::new("__self", self_token.span);
+                self_span = Some(self_token.span);
                 quote!(let #mutability #ident = #self_token;)
             }
             FnArg::Typed(arg) => {
@@ -323,7 +317,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
                     }
                 } else {
                     let pat = &arg.pat;
-                    let ident = positional_arg(i, pat.span());
+                    let ident = positional_arg(i, pat);
                     quote!(let #pat = #ident;)
                 }
             }
@@ -337,7 +331,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
 
     let stmts = &block.stmts;
     let ret_ty = match &sig.output {
-        ReturnType::Default => quote_spanned!(block.span()=>()),
+        ReturnType::Default => quote_spanned!(block.brace_token.span=> ()),
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
@@ -356,8 +350,9 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
     block.stmts = parse_quote!(#box_pin);
 }
 
-fn positional_arg(i: usize, span: Span) -> Ident {
-    format_ident!("__arg{}", i, span = span)
+fn positional_arg(i: usize, pat: &Pat) -> Ident {
+    use syn::spanned::Spanned;
+    format_ident!("__arg{}", i, span = pat.span())
 }
 
 fn has_bound(supertraits: &Supertraits, marker: &Ident) -> bool {
