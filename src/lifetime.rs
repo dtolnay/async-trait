@@ -1,5 +1,4 @@
 use proc_macro2::Span;
-use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
 use syn::{GenericArgument, Lifetime, Receiver, TypeReference};
 
