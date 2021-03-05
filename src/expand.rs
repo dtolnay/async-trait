@@ -181,17 +181,23 @@ fn transform_sig(
         }
     }
 
+    if sig.generics.lt_token.is_none() {
+        sig.generics.lt_token = Some(Token![<](sig.ident.span()));
+    }
+    if sig.generics.gt_token.is_none() {
+        sig.generics.gt_token = Some(Token![>](sig.paren_token.span));
+    }
+
     for elided in lifetimes.elided {
-        push_param(&mut sig.generics, parse_quote!(#elided));
+        sig.generics.params.push(parse_quote!(#elided));
         where_clause_or_default(&mut sig.generics.where_clause)
             .predicates
             .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
     }
 
-    push_param(
-        &mut sig.generics,
-        parse_quote_spanned!(default_span=> 'async_trait),
-    );
+    sig.generics
+        .params
+        .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
         .predicates
@@ -370,15 +376,4 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
         where_token: Default::default(),
         predicates: Punctuated::new(),
     })
-}
-
-fn push_param(generics: &mut Generics, param: GenericParam) {
-    let span = param.span();
-    if generics.lt_token.is_none() {
-        generics.lt_token = Some(Token![<](span));
-    }
-    if generics.gt_token.is_none() {
-        generics.gt_token = Some(Token![>](span));
-    }
-    generics.params.push(param);
 }
