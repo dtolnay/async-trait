@@ -199,12 +199,12 @@ fn transform_sig(
         .params
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
-    let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
-        .predicates
-        .first();
-    let bound_span = first_bound.map_or(default_span, Spanned::span);
-
     if has_self {
+        let first_bound = where_clause_or_default(&mut sig.generics.where_clause)
+            .predicates
+            .first();
+        let bound_span = first_bound.map_or(default_span, Spanned::span);
+
         let bound = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
