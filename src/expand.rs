@@ -341,7 +341,7 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
         ReturnType::Type(_, ret) => quote!(#ret),
     };
 
-    let box_pin = quote_spanned!(ret_ty.span()=>
+    let box_pin = quote_spanned!(block.brace_token.span=>
         Box::pin(async move {
             let __ret: #ret_ty = {
                 #(#decls)*
