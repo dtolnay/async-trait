@@ -1,4 +1,5 @@
 use proc_macro2::{Group, Span, TokenStream, TokenTree};
+use std::iter::FromIterator;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, PatPath, Receiver, Signature, Token,
@@ -87,32 +88,54 @@ impl VisitMut for HasSelf {
 pub struct ReplaceSelf(pub Span);
 
 impl ReplaceSelf {
-    fn visit_token_stream(&mut self, tt: TokenStream) -> TokenStream {
-        tt.into_iter()
-            .map(|tt| match tt {
-                TokenTree::Ident(mut ident) => {
-                    self.visit_ident_mut(&mut ident);
-                    TokenTree::Ident(ident)
+    fn prepend_underscore_to_self(&self, ident: &mut Ident) -> bool {
+        let modified = ident == "self";
+        if modified {
+            *ident = Ident::new("__self", ident.span());
+            #[cfg(self_span_hack)]
+            i.set_span(self.1);
+        }
+        modified
+    }
+
+    fn visit_token_stream(&mut self, tokens: &mut TokenStream) -> bool {
+        let mut out = Vec::new();
+        let mut modified = false;
+        visit_token_stream_impl(self, tokens.clone(), &mut modified, &mut out);
+        if modified {
+            *tokens = TokenStream::from_iter(out);
+        }
+        return modified;
+
+        fn visit_token_stream_impl(
+            visitor: &mut ReplaceSelf,
+            tokens: TokenStream,
+            modified: &mut bool,
+            out: &mut Vec<TokenTree>,
+        ) {
+            for tt in tokens {
+                match tt {
+                    TokenTree::Ident(mut ident) => {
+                        *modified |= visitor.prepend_underscore_to_self(&mut ident);
+                        out.push(TokenTree::Ident(ident));
+                    }
+                    TokenTree::Group(group) => {
+                        let mut content = group.stream();
+                        *modified |= visitor.visit_token_stream(&mut content);
+                        let mut new = Group::new(group.delimiter(), content);
+                        new.set_span(group.span());
+                        out.push(TokenTree::Group(new));
+                    }
+                    other => out.push(other),
                 }
-                TokenTree::Group(group) => {
-                    let tt = self.visit_token_stream(group.stream());
-                    let mut new = Group::new(group.delimiter(), tt);
-                    new.set_span(group.span());
-                    TokenTree::Group(new)
-                }
-                tt => tt,
-            })
-            .collect()
+            }
+        }
     }
 }
 
 impl VisitMut for ReplaceSelf {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
-        if i == "self" {
-            *i = Ident::new("__self", i.span());
-            #[cfg(self_span_hack)]
-            i.set_span(self.1);
-        }
+        self.prepend_underscore_to_self(i);
     }
 
     fn visit_item_mut(&mut self, i: &mut Item) {
@@ -132,7 +155,7 @@ impl VisitMut for ReplaceSelf {
         // `fn`, then `self` is more likely to refer to something other than the
         // outer function's self argument.
         if !contains_fn(mac.tokens.clone()) {
-            mac.tokens = self.visit_token_stream(mac.tokens.clone());
+            self.visit_token_stream(&mut mac.tokens);
         }
     }
 }
