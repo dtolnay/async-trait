@@ -93,7 +93,7 @@ impl ReplaceSelf {
         if modified {
             *ident = Ident::new("__self", ident.span());
             #[cfg(self_span_hack)]
-            i.set_span(self.1);
+            ident.set_span(self.0);
         }
         modified
     }
