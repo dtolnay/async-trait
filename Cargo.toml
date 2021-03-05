@@ -24,5 +24,8 @@ tracing-attributes = "0.1.8"
 tracing-futures = "0.2"
 trybuild = { version = "1.0.19", features = ["diff"] }
 
+[build-dependencies]
+version_check = "0.9"
+
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

@@ -157,6 +157,73 @@ pub(crate) unsafe trait UnsafeTraitPubCrate {}
 #[async_trait]
 unsafe trait UnsafeTraitPrivate {}
 
+pub async fn test_can_destruct() {
+    #[async_trait]
+    trait CanDestruct {
+        async fn f(&self, foos: (u8, u8, u8, u8));
+    }
+
+    #[async_trait]
+    impl CanDestruct for Struct {
+        async fn f(&self, (a, ref mut b, ref c, d): (u8, u8, u8, u8)) {
+            let _a: u8 = a;
+            let _b: &mut u8 = b;
+            let _c: &u8 = c;
+            let _d: u8 = d;
+        }
+    }
+}
+
+pub async fn test_self_in_macro() {
+    #[async_trait]
+    trait Trait {
+        async fn a(self);
+        async fn b(&mut self);
+        async fn c(&self);
+    }
+
+    #[async_trait]
+    impl Trait for String {
+        async fn a(self) { println!("{}", self); }
+        async fn b(&mut self) { println!("{}", self); }
+        async fn c(&self) { println!("{}", self); }
+    }
+}
+
+pub async fn test_inference() {
+    #[async_trait]
+    pub trait Trait {
+        async fn f() -> Box<dyn Iterator<Item = ()>> {
+            Box::new(std::iter::empty())
+        }
+    }
+}
+
+pub async fn test_internal_items() {
+    #[async_trait]
+    #[allow(dead_code, clippy::items_after_statements)]
+    pub trait Trait: Sized {
+        async fn f(self) {
+            struct Struct;
+
+            impl Struct {
+                fn f(self) {
+                    let _ = self;
+                }
+            }
+        }
+    }
+}
+
+pub async fn test_unimplemented() {
+    #[async_trait]
+    pub trait Trait {
+        async fn f() {
+            unimplemented!()
+        }
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
@@ -542,6 +609,7 @@ pub mod issue45 {
     }
 
     #[test]
+    #[should_panic]
     fn tracing() {
         // Create the future outside of the subscriber, as no call to tracing
         // should be made until the future is polled.
@@ -1081,5 +1149,66 @@ pub mod issue134 {
             Self: Sized,
         {
         }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/pull/125#pullrequestreview-491880881
+pub mod drop_order {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use async_trait::async_trait;
+    use crate::executor;
+
+    struct Flagger<'a>(&'a AtomicBool);
+
+    impl Drop for Flagger<'_> {
+        fn drop(&mut self) {
+            self.0.fetch_xor(true, Ordering::AcqRel);
+        }
+    }
+
+    #[async_trait]
+    trait Trait {
+        async fn async_trait(_: Flagger<'_>, flag: &AtomicBool);
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn async_trait(_: Flagger<'_>, flag: &AtomicBool) {
+            flag.fetch_or(true, Ordering::AcqRel);
+        }
+    }
+
+    async fn standalone(_: Flagger<'_>, flag: &AtomicBool) {
+        flag.fetch_or(true, Ordering::AcqRel);
+    }
+
+    #[async_trait]
+    trait SelfTrait {
+        async fn async_trait(self, flag: &AtomicBool);
+    }
+
+    #[async_trait]
+    impl SelfTrait for Flagger<'_> {
+        async fn async_trait(self, flag: &AtomicBool) {
+            flag.fetch_or(true, Ordering::AcqRel);
+        }
+    }
+
+    #[test]
+    fn test_drop_order() {
+        // 0 : 0 ^ 1 = 1 | 1 = 1 (if flagger then block)
+        // 0 : 0 | 1 = 1 ^ 1 = 0 (if block then flagger)
+
+        let flag = AtomicBool::new(false);
+        executor::block_on_simple(standalone(Flagger(&flag), &flag));
+        assert!(!flag.load(Ordering::Acquire));
+
+        executor::block_on_simple(Struct::async_trait(Flagger(&flag), &flag));
+        assert!(!flag.load(Ordering::Acquire));
+
+        executor::block_on_simple(Flagger(&flag).async_trait(&flag));
+        assert!(!flag.load(Ordering::Acquire));
     }
 }
