@@ -6,8 +6,9 @@ use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
 use syn::{
-    parse_quote, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat, PatIdent,
-    Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound, WhereClause,
+    parse_quote, Attribute, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat,
+    PatIdent, Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound,
+    WhereClause,
 };
 
 macro_rules! parse_quote_spanned {
@@ -71,13 +72,9 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(sig, block);
-                            method
-                                .attrs
-                                .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds, clippy::used_underscore_binding)]));
+                            method.attrs.push(lint_suppress_with_body());
                         } else {
-                            method
-                                .attrs
-                                .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds)]));
+                            method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
                         transform_sig(context, sig, has_self, has_default, is_local);
@@ -104,13 +101,26 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(sig, block);
                         transform_sig(context, sig, has_self, false, is_local);
-                        method
-                            .attrs
-                            .push(parse_quote!(#[allow(clippy::type_repetition_in_bounds, clippy::used_underscore_binding)]));
+                        method.attrs.push(lint_suppress_with_body());
                     }
                 }
             }
         }
+    }
+}
+
+fn lint_suppress_with_body() -> Attribute {
+    parse_quote! {
+        #[allow(
+            clippy::type_repetition_in_bounds,
+            clippy::used_underscore_binding
+        )]
+    }
+}
+
+fn lint_suppress_without_body() -> Attribute {
+    parse_quote! {
+        #[allow(clippy::type_repetition_in_bounds)]
     }
 }
 
