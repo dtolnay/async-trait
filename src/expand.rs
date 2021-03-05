@@ -374,10 +374,11 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 
 fn push_param(generics: &mut Generics, param: GenericParam) {
     let span = param.span();
-    if generics.params.is_empty() {
+    if generics.lt_token.is_none() {
         generics.lt_token = Some(Token![<](span));
+    }
+    if generics.gt_token.is_none() {
         generics.gt_token = Some(Token![>](span));
     }
-
     generics.params.push(param);
 }
