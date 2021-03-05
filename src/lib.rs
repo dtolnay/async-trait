@@ -307,7 +307,6 @@
     clippy::default_trait_access,
     clippy::doc_markdown,
     clippy::if_not_else,
-    clippy::items_after_statements,
     clippy::match_like_matches_macro,
     clippy::module_name_repetitions,
     clippy::shadow_unrelated,
