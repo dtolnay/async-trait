@@ -350,6 +350,9 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
             let _: () = { #(#decls)* #(#stmts)* };
         },
         ReturnType::Type(_, ret) => quote_spanned! {block.brace_token.span=>
+            if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<#ret> {
+                return __ret;
+            }
             let __ret: #ret = { #(#decls)* #(#stmts)* };
             #[allow(unreachable_code)]
             __ret

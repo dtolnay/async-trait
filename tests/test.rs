@@ -1258,3 +1258,23 @@ pub mod issue147 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/149
+pub mod issue149 {
+    use async_trait::async_trait;
+
+    pub struct Thing;
+    pub trait Ret {}
+    impl Ret for Thing {}
+
+    pub async fn ok() -> &'static dyn Ret {
+        return &Thing;
+    }
+
+    #[async_trait]
+    pub trait Trait {
+        async fn fail() -> &'static dyn Ret {
+            return &Thing;
+        }
+    }
+}
