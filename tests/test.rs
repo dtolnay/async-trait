@@ -1,6 +1,6 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(min_specialization, min_const_generics)
+    feature(min_specialization, min_const_generics, type_alias_impl_trait)
 )]
 #![allow(
     clippy::let_underscore_drop,
@@ -1276,5 +1276,27 @@ pub mod issue149 {
         async fn fail() -> &'static dyn Ret {
             return &Thing;
         }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/152
+#[cfg(async_trait_nightly_testing)]
+pub mod issue152 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    trait Trait {
+        type Assoc;
+
+        async fn f(&self) -> Self::Assoc;
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        type Assoc = impl Sized;
+
+        async fn f(&self) -> Self::Assoc {}
     }
 }
