@@ -345,6 +345,10 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
     }
 
     let stmts = &block.stmts;
+    let ret = match &sig.output {
+        ReturnType::Default => quote!(()),
+        ReturnType::Type(_, ret) => quote!(#ret),
+    };
     let let_ret = match &sig.output {
         ReturnType::Default => quote_spanned! {block.brace_token.span=>
             let _: () = { #(#decls)* #(#stmts)* };
@@ -356,7 +360,12 @@ fn transform_block(sig: &mut Signature, block: &mut Block) {
         },
     };
     let box_pin = quote_spanned!(block.brace_token.span=>
-        Box::pin(async move { #let_ret })
+        Box::pin(async move {
+            if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<#ret> {
+                return __ret;
+            }
+            #let_ret
+        })
     );
     block.stmts = parse_quote!(#box_pin);
 }
