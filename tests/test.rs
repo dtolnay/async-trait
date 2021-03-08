@@ -1300,3 +1300,25 @@ pub mod issue152 {
         async fn f(&self) -> Self::Assoc {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/154
+pub mod issue154 {
+    #![deny(clippy::items_after_statements)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait MyTrait {
+        async fn f(&self);
+    }
+
+    pub struct Struct;
+
+    #[async_trait]
+    impl MyTrait for Struct {
+        async fn f(&self) {
+            const MAX: u16 = 128;
+            println!("{}", MAX);
+        }
+    }
+}
