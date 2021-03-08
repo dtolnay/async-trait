@@ -357,19 +357,24 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
     }
 
     let stmts = &block.stmts;
+    let stmts = if decls.is_empty() {
+        quote!(#(#stmts)*)
+    } else {
+        quote!({ #(#stmts)* })
+    };
     let let_ret = match &mut sig.output {
         ReturnType::Default => quote_spanned! {block.brace_token.span=>
-            let _: () = { #(#decls)* #(#stmts)* };
+            let _: () = { #(#decls)* #stmts };
         },
         ReturnType::Type(_, ret) => {
             if contains_associated_type_impl_trait(context, ret) {
-                quote!(#(#decls)* #(#stmts)*)
+                quote!(#(#decls)* #stmts)
             } else {
                 quote_spanned! {block.brace_token.span=>
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<#ret> {
                         return __ret;
                     }
-                    let __ret: #ret = { #(#decls)* #(#stmts)* };
+                    let __ret: #ret = { #(#decls)* #stmts };
                     #[allow(unreachable_code)]
                     __ret
                 }
