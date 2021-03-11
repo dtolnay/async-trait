@@ -615,7 +615,6 @@ pub mod issue45 {
     }
 
     #[test]
-    #[should_panic]
     fn tracing() {
         // Create the future outside of the subscriber, as no call to tracing
         // should be made until the future is polled.
