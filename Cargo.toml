@@ -20,8 +20,7 @@ syn = { version = "1.0.61", features = ["full", "visit-mut"] }
 [dev-dependencies]
 rustversion = "1.0"
 tracing = "0.1.14"
-tracing-attributes = "0.1.8"
-tracing-futures = "0.2"
+tracing-attributes = "0.1.14"
 trybuild = { version = "1.0.19", features = ["diff"] }
 
 [package.metadata.docs.rs]
