@@ -1,6 +1,6 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(min_specialization, min_const_generics, type_alias_impl_trait)
+    feature(min_specialization, type_alias_impl_trait)
 )]
 #![allow(
     clippy::let_underscore_drop,
