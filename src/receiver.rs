@@ -2,7 +2,7 @@ use proc_macro2::{Group, Span, TokenStream, TokenTree};
 use std::iter::FromIterator;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, PatPath, Receiver, Signature, Token,
+    Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, PatPath, Path, Receiver, Signature, Token,
     TypePath,
 };
 
@@ -137,6 +137,16 @@ impl ReplaceSelf {
 impl VisitMut for ReplaceSelf {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         self.prepend_underscore_to_self(i);
+    }
+
+    fn visit_path_mut(&mut self, p: &mut Path) {
+        if p.segments.len() == 1 {
+            // Replace `self`, but not `self::function`.
+            self.visit_ident_mut(&mut p.segments[0].ident);
+        }
+        for segment in &mut p.segments {
+            self.visit_path_arguments_mut(&mut segment.arguments);
+        }
     }
 
     fn visit_item_mut(&mut self, i: &mut Item) {
