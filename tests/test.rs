@@ -1335,3 +1335,28 @@ pub mod issue158 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/161
+pub mod issue161 {
+    use async_trait::async_trait;
+    use futures::future::FutureExt;
+    use std::sync::Arc;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(self: Arc<Self>);
+    }
+
+    pub struct MyStruct(bool);
+
+    #[async_trait]
+    impl Trait for MyStruct {
+        async fn f(self: Arc<Self>) {
+            futures::select! {
+                _ = async {
+                    println!("{}", self.0);
+                }.fuse() => {}
+            }
+        }
+    }
+}
