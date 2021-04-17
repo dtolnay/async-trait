@@ -151,9 +151,16 @@ impl VisitMut for ReplaceSelf {
 
     fn visit_item_mut(&mut self, i: &mut Item) {
         // Visit `macro_rules!` because locally defined macros can refer to
-        // `self`. Otherwise, do not recurse into nested items.
+        // `self`.
+        //
+        // Visit `futures::select` and similar select macros, which commonly
+        // appear syntactically like an item despite expanding to an expression.
+        //
+        // Otherwise, do not recurse into nested items.
         if let Item::Macro(i) = i {
-            if i.mac.path.is_ident("macro_rules") {
+            if i.mac.path.is_ident("macro_rules")
+                || i.mac.path.segments.last().unwrap().ident == "select"
+            {
                 self.visit_macro_mut(&mut i.mac)
             }
         }
