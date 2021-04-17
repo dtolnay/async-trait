@@ -1337,6 +1337,7 @@ pub mod issue158 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/161
+#[allow(clippy::mut_mut)]
 pub mod issue161 {
     use async_trait::async_trait;
     use futures::future::FutureExt;
