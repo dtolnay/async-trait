@@ -285,7 +285,7 @@ fn transform_sig(
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
     sig.output = parse_quote_spanned! {ret_span=>
-        -> ::core::pin::Pin<Box<
+        -> ::core::pin::Pin<::std::boxed::Box<
             dyn ::core::future::Future<Output = #ret> + #bounds
         >>
     };
@@ -383,7 +383,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
         }
     };
     let box_pin = quote_spanned!(block.brace_token.span=>
-        Box::pin(async move { #let_ret })
+        ::std::boxed::Box::pin(async move { #let_ret })
     );
     block.stmts = parse_quote!(#box_pin);
 }

@@ -16,6 +16,8 @@ pub mod executor;
 // Dummy module to check that the expansion refer to rust's core crate
 mod core {}
 
+mod hygiene;
+
 #[async_trait]
 trait Trait {
     type Assoc;
