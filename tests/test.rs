@@ -7,7 +7,8 @@
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::needless_return,
-    clippy::trivially_copy_pass_by_ref
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unused_async
 )]
 
 use async_trait::async_trait;
