@@ -1333,7 +1333,7 @@ pub mod issue158 {
     #[async_trait]
     pub trait Trait {
         async fn f(&self) {
-            self::f()
+            self::f();
         }
     }
 }

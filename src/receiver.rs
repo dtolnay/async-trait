@@ -161,7 +161,7 @@ impl VisitMut for ReplaceSelf {
             if i.mac.path.is_ident("macro_rules")
                 || i.mac.path.segments.last().unwrap().ident == "select"
             {
-                self.visit_macro_mut(&mut i.mac)
+                self.visit_macro_mut(&mut i.mac);
             }
         }
     }
