@@ -110,10 +110,11 @@ expanded as:
 
 ```rust
 impl Advertisement for AutoplayingVideo {
-    fn run<'async_trait>(
-        &'async_trait self,
+    fn run<'life0, 'async_trait>(
+        &'life0 self,
     ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
     where
+        'life0: 'async_trait,
         Self: Sync + 'async_trait,
     {
         async fn run(_self: &AutoplayingVideo) {
