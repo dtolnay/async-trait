@@ -3,6 +3,8 @@ error[E0726]: implicit elided lifetime not allowed here
    |
 12 | impl Trait for A {
    |      ^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |
+   = note: assuming a `'static` lifetime...
 
 error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/lifetime-span.rs:32:10
