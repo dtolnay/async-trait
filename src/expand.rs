@@ -396,7 +396,7 @@ fn positional_arg(i: usize, pat: &Pat) -> Ident {
 fn has_bound(supertraits: &Supertraits, marker: &Ident) -> bool {
     for bound in supertraits {
         if let TypeParamBound::Trait(bound) = bound {
-            if bound.path.is_ident(marker) {
+            if bound.path.is_ident(marker) || bound.path == parse_quote!(::core::marker::#marker) {
                 return true;
             }
         }
