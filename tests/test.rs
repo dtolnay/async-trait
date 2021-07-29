@@ -1363,3 +1363,16 @@ pub mod issue161 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/169
+#[deny(where_clauses_object_safety)]
+pub mod issue169 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait: ::core::marker::Sync {
+        async fn f(&self) {}
+    }
+
+    pub fn test(_t: &dyn Trait) {}
+}
