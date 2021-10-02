@@ -1,3 +1,23 @@
+warning: `MutexGuard` held across a suspend point, but should not be
+  --> $DIR/send-not-implemented.rs:10:13
+   |
+10 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
+11 |         f().await;
+   |         --------- the value is held across this suspend point
+   |
+   = note: `#[warn(must_not_suspend)]` on by default
+note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+  --> $DIR/send-not-implemented.rs:10:13
+   |
+10 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/send-not-implemented.rs:10:13
+   |
+10 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
+
 error: future cannot be sent between threads safely
   --> $DIR/send-not-implemented.rs:8:26
    |
@@ -20,6 +40,25 @@ note: future is not `Send` as this value is used across an await
 12 |     }
    |     - `_guard` is later dropped here
    = note: required for the cast to the object type `dyn Future<Output = ()> + Send`
+
+warning: `MutexGuard` held across a suspend point, but should not be
+  --> $DIR/send-not-implemented.rs:16:13
+   |
+16 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
+17 |         f().await;
+   |         --------- the value is held across this suspend point
+   |
+note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+  --> $DIR/send-not-implemented.rs:16:13
+   |
+16 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
+help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
+  --> $DIR/send-not-implemented.rs:16:13
+   |
+16 |         let _guard = mutex.lock().unwrap();
+   |             ^^^^^^
 
 error: future cannot be sent between threads safely
   --> $DIR/send-not-implemented.rs:14:38
