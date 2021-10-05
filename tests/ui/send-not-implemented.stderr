@@ -7,7 +7,7 @@ warning: `MutexGuard` held across a suspend point, but should not be
    |         --------- the value is held across this suspend point
    |
    = note: `#[warn(must_not_suspend)]` on by default
-note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+note: holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
   --> $DIR/send-not-implemented.rs:10:13
    |
 10 |         let _guard = mutex.lock().unwrap();
@@ -49,7 +49,7 @@ warning: `MutexGuard` held across a suspend point, but should not be
 17 |         f().await;
    |         --------- the value is held across this suspend point
    |
-note: Holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
+note: holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
   --> $DIR/send-not-implemented.rs:16:13
    |
 16 |         let _guard = mutex.lock().unwrap();
