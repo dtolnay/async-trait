@@ -1,5 +1,5 @@
 warning: `MutexGuard` held across a suspend point, but should not be
-  --> $DIR/send-not-implemented.rs:10:13
+  --> $DIR/tests/ui/send-not-implemented.rs:10:13
    |
 10 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
@@ -8,18 +8,18 @@ warning: `MutexGuard` held across a suspend point, but should not be
    |
    = note: `#[warn(must_not_suspend)]` on by default
 note: holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
-  --> $DIR/send-not-implemented.rs:10:13
+  --> $DIR/tests/ui/send-not-implemented.rs:10:13
    |
 10 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
 help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
-  --> $DIR/send-not-implemented.rs:10:13
+  --> $DIR/tests/ui/send-not-implemented.rs:10:13
    |
 10 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
 
 error: future cannot be sent between threads safely
-  --> $DIR/send-not-implemented.rs:8:26
+  --> $DIR/tests/ui/send-not-implemented.rs:8:26
    |
 8  |       async fn test(&self) {
    |  __________________________^
@@ -31,7 +31,7 @@ error: future cannot be sent between threads safely
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/send-not-implemented.rs:11:9
+  --> $DIR/tests/ui/send-not-implemented.rs:11:9
    |
 10 |         let _guard = mutex.lock().unwrap();
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
@@ -42,7 +42,7 @@ note: future is not `Send` as this value is used across an await
    = note: required for the cast to the object type `dyn Future<Output = ()> + Send`
 
 warning: `MutexGuard` held across a suspend point, but should not be
-  --> $DIR/send-not-implemented.rs:16:13
+  --> $DIR/tests/ui/send-not-implemented.rs:16:13
    |
 16 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
@@ -50,18 +50,18 @@ warning: `MutexGuard` held across a suspend point, but should not be
    |         --------- the value is held across this suspend point
    |
 note: holding a MutexGuard across suspend points can cause deadlocks, delays, and cause Futures to not implement `Send`
-  --> $DIR/send-not-implemented.rs:16:13
+  --> $DIR/tests/ui/send-not-implemented.rs:16:13
    |
 16 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
 help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
-  --> $DIR/send-not-implemented.rs:16:13
+  --> $DIR/tests/ui/send-not-implemented.rs:16:13
    |
 16 |         let _guard = mutex.lock().unwrap();
    |             ^^^^^^
 
 error: future cannot be sent between threads safely
-  --> $DIR/send-not-implemented.rs:14:38
+  --> $DIR/tests/ui/send-not-implemented.rs:14:38
    |
 14 |       async fn test_ret(&self) -> bool {
    |  ______________________________________^
@@ -74,7 +74,7 @@ error: future cannot be sent between threads safely
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/send-not-implemented.rs:17:9
+  --> $DIR/tests/ui/send-not-implemented.rs:17:9
    |
 16 |         let _guard = mutex.lock().unwrap();
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
