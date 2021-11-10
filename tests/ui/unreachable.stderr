@@ -1,10 +1,10 @@
 error: unreachable statement
   --> tests/ui/unreachable.rs:16:9
    |
-15 |         let y = unimplemented!();
-   |                 ---------------- any code following this expression is unreachable
-16 |         let z = y;
-   |         ^^^^^^^^^^ unreachable statement
+15 |         let _y = unimplemented!();
+   |                  ---------------- any code following this expression is unreachable
+16 |         let _z = _y;
+   |         ^^^^^^^^^^^^ unreachable statement
    |
 note: the lint level is defined here
   --> tests/ui/unreachable.rs:1:9
@@ -12,22 +12,3 @@ note: the lint level is defined here
 1  | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(unreachable_code)]` implied by `#[deny(warnings)]`
-
-error: unused variable: `y`
-  --> tests/ui/unreachable.rs:15:13
-   |
-15 |         let y = unimplemented!();
-   |             ^ help: if this is intentional, prefix it with an underscore: `_y`
-   |
-note: the lint level is defined here
-  --> tests/ui/unreachable.rs:1:9
-   |
-1  | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
-
-error: unused variable: `z`
-  --> tests/ui/unreachable.rs:16:13
-   |
-16 |         let z = y;
-   |             ^ help: if this is intentional, prefix it with an underscore: `_z`
