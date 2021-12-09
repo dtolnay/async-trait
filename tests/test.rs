@@ -1382,7 +1382,9 @@ pub mod issue169 {
 pub mod issue183 {
     #![deny(clippy::shadow_same)]
 
-    #[async_trait::async_trait]
+    use async_trait::async_trait;
+
+    #[async_trait]
     trait Foo {
         async fn foo(_n: i32) {}
     }
