@@ -128,7 +128,8 @@ fn lint_suppress_with_body() -> Attribute {
             clippy::no_effect_underscore_binding,
             clippy::type_complexity,
             clippy::type_repetition_in_bounds,
-            clippy::used_underscore_binding
+            clippy::used_underscore_binding,
+            clippy::shadow_same
         )]
     }
 }
