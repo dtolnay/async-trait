@@ -1,6 +1,6 @@
 [package]
 name = "async-trait"
-version = "0.1.51"
+version = "0.1.52"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 edition = "2018"
 rust-version = "1.39"
