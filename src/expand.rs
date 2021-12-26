@@ -7,16 +7,10 @@ use std::collections::BTreeSet as Set;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, Attribute, Block, FnArg, GenericParam, Generics, Ident, ImplItem, Lifetime, Pat,
-    PatIdent, Receiver, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeParamBound,
-    TypePath, WhereClause,
+    parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
+    ImplItem, Lifetime, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token, TraitItem,
+    Type, TypeParamBound, TypePath, WhereClause,
 };
-
-macro_rules! parse_quote_spanned {
-    ($span:expr=> $($t:tt)*) => {
-        syn::parse2(quote_spanned!($span=> $($t)*)).unwrap()
-    };
-}
 
 impl ToTokens for Item {
     fn to_tokens(&self, tokens: &mut TokenStream) {
