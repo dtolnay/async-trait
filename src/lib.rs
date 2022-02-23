@@ -302,6 +302,34 @@
 //!
 //! let object = &value as &dyn ObjectSafe;
 //! ```
+//!
+//! # Experimental features
+//!
+//! Async fns may get transformed into methods that return
+//! `impl Future + Send + 'async` if `generic_associated_types` is enabled.
+//!
+//! ```
+//! # // TODO: ![feature(generic_associated_types)]
+//! # use async_trait::async_trait;
+//! #
+//! #[async_trait(impl_future)]
+//! pub trait MyFastTrait {
+//!     async fn cnt_fast(&self) -> usize;
+//!
+//!     // presumably other methods
+//! }
+//! #
+//! # struct MyType(usize);
+//! #
+//! # #[async_trait]
+//! # impl MyFastTrait for MyType {
+//! #     async fn cnt_fast(&self) -> usize {
+//! #         self.0
+//! #     }
+//! # }
+//! #
+//! # let value = MyType(1);
+//! ```
 
 #![allow(
     clippy::default_trait_access,
