@@ -51,7 +51,7 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool) {
+pub fn expand(input: &mut Item, is_local: bool, try_impl_future: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -67,13 +67,20 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block);
+                            transform_block(context, sig, block, try_impl_future);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        transform_sig(
+                            context,
+                            sig,
+                            has_self,
+                            has_default,
+                            is_local,
+                            try_impl_future,
+                        );
                     }
                 }
             }
@@ -105,8 +112,8 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_block(context, sig, block, try_impl_future);
+                        transform_sig(context, sig, has_self, false, is_local, try_impl_future);
                         method.attrs.push(lint_suppress_with_body());
                     }
                 }
@@ -140,11 +147,22 @@ fn lint_suppress_without_body() -> Attribute {
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
-// Output:
+// Output (try_impl_future == false):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
 //     ) -> Pin<Box<dyn Future<Output = Ret> + Send + 'async_trait>>
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: Sync + 'async_trait;
+//
+// Output (try_impl_future == true):
+//     fn f<'life0, 'life1, 'async_trait, T>(
+//         &'life0 self,
+//         x: &'life1 T,
+//     ) -> Self::Res_f<'async_trait>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -156,6 +174,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
+    _try_impl_future: bool,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -292,7 +311,7 @@ fn transform_sig(
 //         self + x + a + b
 //     }
 //
-// Output:
+// Output (try_impl_future == false):
 //     Box::pin(async move {
 //         let ___ret: Ret = {
 //             let __self = self;
@@ -304,7 +323,16 @@ fn transform_sig(
 //
 //         ___ret
 //     })
-fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
+//
+// Output (try_impl_future == true):
+//     type Ref_f<'async_trait, T>: Future<Output = Ret> + 'async_trait;
+//     fn f<T>(&self, x: &T, (a, b): (A, B)) -> Self::Ref_f<'_, T>;
+fn transform_block(
+    context: Context,
+    sig: &mut Signature,
+    block: &mut Block,
+    _try_impl_future: bool,
+) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
