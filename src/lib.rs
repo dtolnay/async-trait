@@ -309,10 +309,10 @@
 //! `impl Future + Send + 'async` if `generic_associated_types` is enabled.
 //!
 //! ```
-//! # // TODO: ![feature(generic_associated_types)]
+//! # // TODO: #![feature(generic_associated_types)]
 //! # use async_trait::async_trait;
 //! #
-//! #[async_trait(impl_future)]
+//! #[async_trait(no_box)]
 //! pub trait MyFastTrait {
 //!     async fn cnt_fast(&self) -> usize;
 //!
@@ -361,6 +361,6 @@ use syn::parse_macro_input;
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item, args.local, args.impl_future);
+    expand(&mut item, args.local, args.no_box);
     TokenStream::from(quote!(#item))
 }

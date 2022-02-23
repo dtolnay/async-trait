@@ -5,19 +5,19 @@ use syn::Token;
 #[derive(Copy, Clone)]
 pub struct Args {
     pub local: bool,
-    pub impl_future: bool,
+    pub no_box: bool,
 }
 
 mod kw {
     syn::custom_keyword!(Send);
-    syn::custom_keyword!(impl_future);
+    syn::custom_keyword!(no_box);
 }
 
 impl Parse for Args {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut args = Args {
             local: false,
-            impl_future: false,
+            no_box: false,
         };
         while !input.is_empty() {
             if try_parse(input, &mut args).is_err() {
@@ -35,12 +35,12 @@ fn try_parse(input: ParseStream, args: &mut Args) -> Result<()> {
         args.local = true;
         return Ok(());
     }
-    input.parse::<kw::impl_future>()?;
-    args.impl_future = true;
+    input.parse::<kw::no_box>()?;
+    args.no_box = true;
     Ok(())
 }
 
 fn error() -> Error {
-    let msg = "expected #[async_trait], #[async_trait(impl_future), #[async_trait(?Send)], or #[async_trait(?Send, impl_future)]";
+    let msg = "expected #[async_trait], #[async_trait(no_box), #[async_trait(?Send)], or #[async_trait(?Send, no_box)]";
     Error::new(Span::call_site(), msg)
 }

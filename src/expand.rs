@@ -51,7 +51,7 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool, try_impl_future: bool) {
+pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -67,20 +67,13 @@ pub fn expand(input: &mut Item, is_local: bool, try_impl_future: bool) {
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block, try_impl_future);
+                            transform_block(context, sig, block, no_box);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(
-                            context,
-                            sig,
-                            has_self,
-                            has_default,
-                            is_local,
-                            try_impl_future,
-                        );
+                        transform_sig(context, sig, has_self, has_default, is_local, no_box);
                     }
                 }
             }
@@ -112,8 +105,8 @@ pub fn expand(input: &mut Item, is_local: bool, try_impl_future: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block, try_impl_future);
-                        transform_sig(context, sig, has_self, false, is_local, try_impl_future);
+                        transform_block(context, sig, block, no_box);
+                        transform_sig(context, sig, has_self, false, is_local, no_box);
                         method.attrs.push(lint_suppress_with_body());
                     }
                 }
@@ -147,7 +140,7 @@ fn lint_suppress_without_body() -> Attribute {
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
-// Output (try_impl_future == false):
+// Output (no_box == false):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -158,7 +151,8 @@ fn lint_suppress_without_body() -> Attribute {
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
 //
-// Output (try_impl_future == true):
+// Output (no_box == true):
+//     type Res_f<'async_trait>: Future<Output = Ret> + 'async_trait;
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -174,7 +168,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
-    _try_impl_future: bool,
+    _no_box: bool,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -311,7 +305,7 @@ fn transform_sig(
 //         self + x + a + b
 //     }
 //
-// Output (try_impl_future == false):
+// Output (no_box == false):
 //     Box::pin(async move {
 //         let ___ret: Ret = {
 //             let __self = self;
@@ -324,15 +318,17 @@ fn transform_sig(
 //         ___ret
 //     })
 //
-// Output (try_impl_future == true):
-//     type Ref_f<'async_trait, T>: Future<Output = Ret> + 'async_trait;
-//     fn f<T>(&self, x: &T, (a, b): (A, B)) -> Self::Ref_f<'_, T>;
-fn transform_block(
-    context: Context,
-    sig: &mut Signature,
-    block: &mut Block,
-    _try_impl_future: bool,
-) {
+// Output (no_box == true):
+//     let __self = unsafe { std::mem::transmute(self) };
+//     async move {
+//         let __ret: Ret = {
+//             let x = x;
+//             let (a, b) = __arg1;
+//
+//             __self + x + a + b
+//         };
+//     }
+fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, _no_box: bool) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
