@@ -238,23 +238,33 @@ pub mod fast_async {
     use crate::executor;
     use async_trait::async_trait;
 
+    #[derive(Default)]
+    struct F(usize);
+
     #[async_trait(no_box)]
     pub trait FastAsyncTrait {
-        async fn ret_ref(&self, i: i8);
+        async fn add_u8(&self, u: u8) -> usize;
+        async fn clone_ret<T: Clone>(&self, t: T) -> (usize, T);
     }
 
     #[async_trait(no_box)]
-    impl FastAsyncTrait for () {
-        async fn ret_ref(&self, i: i8) {
-            println!("HI: {}", i);
+    impl FastAsyncTrait for F {
+        async fn add_u8(&self, u: u8) -> usize {
+            println!("HI: {}", u);
+            self.0 + (u as usize)
+        }
+        async fn clone_ret<T: Clone>(&self, t: T) -> (usize, T) {
+            (self.0, t.clone())
         }
     }
 
     #[test]
     fn test() {
-        let i: i8 = 17;
-        let fut = ().ret_ref(i);
-        assert_eq!(executor::block_on_simple(fut), ());
+        let u: u8 = 17;
+        let fut_add_u8 = F(1).add_u8(u);
+        let fut_clone_ret = F(1).clone_ret(2_usize);
+        assert_eq!(executor::block_on_simple(fut_add_u8), (u + 1) as usize);
+        assert_eq!(executor::block_on_simple(fut_clone_ret), (1, 2));
     }
 }
 

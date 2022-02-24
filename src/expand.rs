@@ -64,10 +64,11 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         if no_box {
+                            let ret = ret_token_stream(&sig.output);
                             let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let implicit_type_def: TraitItem = parse_quote!(
                                 #[allow(non_camel_case_types)]
-                                type #implicit_type_name<'s>: ::core::future::Future<Output = ()> + 's
+                                type #implicit_type_name<'s>: ::core::future::Future<Output = #ret> + 's
                                 where
                                     Self: 's;
                             );
@@ -121,9 +122,10 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         if no_box {
+                            let ret = ret_token_stream(&sig.output);
                             let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let implicit_type_assign: ImplItem = parse_quote!(
-                                type #implicit_type_name<'s> = impl ::core::future::Future<Output = ()> + 's;
+                                type #implicit_type_name<'s> = impl ::core::future::Future<Output = #ret> + 's;
                             );
                             implicit_associated_type_assigns.push(implicit_type_assign);
                         }
@@ -202,10 +204,7 @@ fn transform_sig(
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
-    let ret = match &sig.output {
-        ReturnType::Default => quote!(()),
-        ReturnType::Type(_, ret) => quote!(#ret),
-    };
+    let ret = ret_token_stream(&sig.output);
 
     let default_span = sig
         .ident
@@ -522,4 +521,11 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 
 fn derive_implicit_type_name(id: &Ident) -> Ident {
     format_ident!("RetType_{}", id)
+}
+
+fn ret_token_stream(ret_type: &ReturnType) -> TokenStream {
+    match &ret_type {
+        ReturnType::Default => quote!(()),
+        ReturnType::Type(_, ret) => quote!(#ret),
+    }
 }
