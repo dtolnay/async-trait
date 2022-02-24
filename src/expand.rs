@@ -64,8 +64,10 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         if no_box {
+                            let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let implicit_type_def: TraitItem = parse_quote!(
-                                type X<'s>: ::core::future::Future<Output = ()> + 's
+                                #[allow(non_camel_case_types)]
+                                type #implicit_type_name<'s>: ::core::future::Future<Output = ()> + 's
                                 where
                                     Self: 's;
                             );
@@ -119,8 +121,9 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         if no_box {
+                            let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let implicit_type_assign: ImplItem = parse_quote!(
-                                type X<'s> = impl ::core::future::Future<Output = ()> + 's;
+                                type #implicit_type_name<'s> = impl ::core::future::Future<Output = ()> + 's;
                             );
                             implicit_associated_type_assigns.push(implicit_type_assign);
                         }
@@ -322,8 +325,9 @@ fn transform_sig(
     };
 
     if no_box {
+        let implicit_type_name = derive_implicit_type_name(&sig.ident);
         sig.output = parse_quote_spanned! {ret_span=>
-            -> Self::X<'_>
+            -> Self::#implicit_type_name<'_>
         };
     } else {
         sig.output = parse_quote_spanned! {ret_span=>
@@ -514,4 +518,8 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
         where_token: Default::default(),
         predicates: Punctuated::new(),
     })
+}
+
+fn derive_implicit_type_name(id: &Ident) -> Ident {
+    format_ident!("RetType_{}", id)
 }
