@@ -2,7 +2,11 @@
     async_trait_nightly_testing,
     feature(min_specialization, type_alias_impl_trait)
 )]
-#![feature(generic_associated_types, type_alias_impl_trait)]
+#![feature(
+    associated_type_bounds,
+    generic_associated_types,
+    type_alias_impl_trait
+)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
@@ -233,7 +237,7 @@ pub async fn test_unimplemented() {
         }
     }
 }
-
+pub mod fast_async_demo {}
 pub mod fast_async {
     use crate::executor;
     use async_trait::async_trait;
@@ -244,7 +248,7 @@ pub mod fast_async {
     #[async_trait(no_box)]
     pub trait FastAsyncTrait {
         async fn add_u8(&self, u: u8) -> usize;
-        async fn clone_ret<T: Clone>(&self, t: T) -> (usize, T);
+        async fn clone_ret<T>(&self, t: T) -> (usize, T);
     }
 
     #[async_trait(no_box)]
@@ -253,8 +257,8 @@ pub mod fast_async {
             println!("HI: {}", u);
             self.0 + (u as usize)
         }
-        async fn clone_ret<T: Clone>(&self, t: T) -> (usize, T) {
-            (self.0, t.clone())
+        async fn clone_ret<T>(&self, t: T) -> (usize, T) {
+            (self.0, t)
         }
     }
 
