@@ -308,7 +308,7 @@
 //! Async fns may get transformed into methods that return
 //! `impl Future + Send + 'async` if `generic_associated_types` is enabled.
 //!
-//! ```
+//! ```compile_fail
 //! # // TODO: #![feature(generic_associated_types)]
 //! # use async_trait::async_trait;
 //! #

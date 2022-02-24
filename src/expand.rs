@@ -54,6 +54,7 @@ type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
     match input {
         Item::Trait(input) => {
+            let mut implicit_associated_types: Vec<TraitItem> = Vec::new();
             let context = Context::Trait {
                 generics: &input.generics,
                 supertraits: &input.supertraits,
@@ -62,6 +63,15 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
+                        if no_box {
+                            let implicit_type_def: TraitItem = parse_quote!(
+                                type X<'s>: ::core::future::Future<Output = ()> + 's
+                                where
+                                    Self: 's;
+                            );
+                            implicit_associated_types.push(implicit_type_def);
+                        }
+
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
                         method.attrs.push(parse_quote!(#[must_use]));
@@ -77,6 +87,10 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     }
                 }
             }
+
+            implicit_associated_types
+                .into_iter()
+                .for_each(|t| input.items.push(t));
         }
         Item::Impl(input) => {
             let mut lifetimes = CollectLifetimes::new("'impl", input.impl_token.span);
@@ -95,6 +109,7 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                 }
             }
 
+            let mut implicit_associated_type_assigns: Vec<ImplItem> = Vec::new();
             let context = Context::Impl {
                 impl_generics: &input.generics,
                 associated_type_impl_traits: &associated_type_impl_traits,
@@ -103,6 +118,12 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
+                        if no_box {
+                            let implicit_type_assign: ImplItem = parse_quote!(
+                                type X<'s> = impl ::core::future::Future<Output = ()> + 's;
+                            );
+                            implicit_associated_type_assigns.push(implicit_type_assign);
+                        }
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, no_box);
@@ -111,6 +132,10 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                     }
                 }
             }
+
+            implicit_associated_type_assigns
+                .into_iter()
+                .for_each(|t| input.items.push(t));
         }
     }
 }
@@ -152,11 +177,13 @@ fn lint_suppress_without_body() -> Attribute {
 //         Self: Sync + 'async_trait;
 //
 // Output (no_box == true):
-//     type Res_f<'async_trait>: Future<Output = Ret> + 'async_trait;
+//     type Res_f<'s>: Future<Output = Ret> + 's
+//     where
+//         Self: Sync + 'async_trait;
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
-//     ) -> Self::Res_f<'async_trait>
+//     ) -> Self::Res_f<'_>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -168,7 +195,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
-    _no_box: bool,
+    no_box: bool,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -293,11 +320,18 @@ fn transform_sig(
     } else {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
-    sig.output = parse_quote_spanned! {ret_span=>
-        -> ::core::pin::Pin<Box<
-            dyn ::core::future::Future<Output = #ret> + #bounds
-        >>
-    };
+
+    if no_box {
+        sig.output = parse_quote_spanned! {ret_span=>
+            -> Self::X<'_>
+        };
+    } else {
+        sig.output = parse_quote_spanned! {ret_span=>
+            -> ::core::pin::Pin<Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        };
+    }
 }
 
 // Input:
@@ -319,16 +353,18 @@ fn transform_sig(
 //     })
 //
 // Output (no_box == true):
-//     let __self = unsafe { std::mem::transmute(self) };
 //     async move {
 //         let __ret: Ret = {
+//             let __self = self;
 //             let x = x;
 //             let (a, b) = __arg1;
 //
 //             __self + x + a + b
 //         };
+//
+//         __ret
 //     }
-fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, _no_box: bool) {
+fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, no_box: bool) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
@@ -402,10 +438,18 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, _no
             }
         }
     };
-    let box_pin = quote_spanned!(block.brace_token.span=>
-        Box::pin(async move { #let_ret })
-    );
-    block.stmts = parse_quote!(#box_pin);
+
+    if no_box {
+        let async_block = quote_spanned!(block.brace_token.span=>
+            async move { #let_ret }
+        );
+        block.stmts = parse_quote!(#async_block);
+    } else {
+        let box_pin = quote_spanned!(block.brace_token.span=>
+            Box::pin(async move { #let_ret })
+        );
+        block.stmts = parse_quote!(#box_pin);
+    }
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {

@@ -1,7 +1,8 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(generic_associated_types, min_specialization, type_alias_impl_trait)
+    feature(min_specialization, type_alias_impl_trait)
 )]
+#![feature(generic_associated_types, type_alias_impl_trait)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
@@ -239,21 +240,21 @@ pub mod fast_async {
 
     #[async_trait(no_box)]
     pub trait FastAsyncTrait {
-        async fn ret_ref<'t, T: Sync>(&self, t: &'t T) -> &'t T;
+        async fn ret_ref(&self, i: i8);
     }
 
     #[async_trait(no_box)]
     impl FastAsyncTrait for () {
-        async fn ret_ref<'t, T: Sync>(&self, t: &'t T) -> &'t T {
-            t
+        async fn ret_ref(&self, i: i8) {
+            println!("HI: {}", i);
         }
     }
 
     #[test]
     fn test() {
-        let u: usize = 17;
-        let fut = ().ret_ref(&u);
-        assert_eq!(*executor::block_on_simple(fut), 17);
+        let i: i8 = 17;
+        let fut = ().ret_ref(i);
+        assert_eq!(executor::block_on_simple(fut), ());
     }
 }
 
