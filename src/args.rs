@@ -5,42 +5,32 @@ use syn::Token;
 #[derive(Copy, Clone)]
 pub struct Args {
     pub local: bool,
-    pub no_box: bool,
 }
 
 mod kw {
     syn::custom_keyword!(Send);
-    syn::custom_keyword!(no_box);
 }
 
 impl Parse for Args {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut args = Args {
-            local: false,
-            no_box: false,
-        };
-        while !input.is_empty() {
-            if try_parse(input, &mut args).is_err() {
-                return Err(error());
-            }
+        match try_parse(input) {
+            Ok(args) if input.is_empty() => Ok(args),
+            _ => Err(error()),
         }
-        Ok(args)
     }
 }
 
-fn try_parse(input: ParseStream, args: &mut Args) -> Result<()> {
+fn try_parse(input: ParseStream) -> Result<Args> {
     if input.peek(Token![?]) {
         input.parse::<Token![?]>()?;
         input.parse::<kw::Send>()?;
-        args.local = true;
-        return Ok(());
+        Ok(Args { local: true })
+    } else {
+        Ok(Args { local: false })
     }
-    input.parse::<kw::no_box>()?;
-    args.no_box = true;
-    Ok(())
 }
 
 fn error() -> Error {
-    let msg = "expected #[async_trait], #[async_trait(no_box), #[async_trait(?Send)], or #[async_trait(?Send, no_box)]";
+    let msg = "expected #[async_trait] or #[async_trait(?Send)]";
     Error::new(Span::call_site(), msg)
 }

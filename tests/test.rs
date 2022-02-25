@@ -240,16 +240,20 @@ pub async fn test_unimplemented() {
 
 pub mod fast_async {
     use crate::executor;
-    use async_trait::async_trait;
+    use async_trait::{async_trait, static_future};
 
     #[derive(Default)]
     struct F(usize);
 
-    #[async_trait(no_box)]
+    #[async_trait]
     pub trait FastAsyncTrait {
+        #[static_future]
         async fn add_u8(&self, u: u8) -> usize;
+        #[static_future]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
+        #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
+        #[static_future]
         async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T);
         /*
         async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T;
@@ -260,18 +264,22 @@ pub mod fast_async {
         */
     }
 
-    #[async_trait(no_box)]
+    #[async_trait]
     impl FastAsyncTrait for F {
+        #[static_future]
         async fn add_u8(&self, u: u8) -> usize {
             self.0 + (u as usize)
         }
+        #[static_future]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
             (*u) += self.0;
             (u, self.0)
         }
+        #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize {
             &self.0
         }
+        #[static_future]
         async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T) {
             (self.0, t.clone())
         }
@@ -303,7 +311,7 @@ pub mod fast_async {
             (u_small + 1) as usize
         );
         assert_eq!(executor::block_on_simple(fut_add_usize_mut), (&mut 21, 2));
-        //assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 3);
+        assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 3);
         assert_eq!(executor::block_on_simple(fut_ret_pair), (4, 2));
     }
 }

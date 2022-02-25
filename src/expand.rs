@@ -51,7 +51,7 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
+pub fn expand(input: &mut Item, is_local: bool) {
     match input {
         Item::Trait(input) => {
             let mut implicit_associated_types: Vec<TraitItem> = Vec::new();
@@ -63,7 +63,8 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let implicit_type_ret = if no_box {
+                        let static_future = static_future(&method.attrs);
+                        let implicit_type_ret = if static_future {
                             Some(ret_token_stream(&sig.output))
                         } else {
                             None
@@ -74,13 +75,13 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block, no_box);
+                            transform_block(context, sig, block, static_future);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local, no_box);
+                        transform_sig(context, sig, has_self, has_default, is_local, static_future);
 
                         if let Some(ret) = implicit_type_ret {
                             let implicit_type_name = derive_implicit_type_name(&sig.ident);
@@ -133,7 +134,8 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let implicit_type_ret = if no_box {
+                        let static_future = static_future(&method.attrs);
+                        let implicit_type_ret = if static_future {
                             Some(ret_token_stream(&sig.output))
                         } else {
                             None
@@ -141,8 +143,8 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
 
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block, no_box);
-                        transform_sig(context, sig, has_self, false, is_local, no_box);
+                        transform_block(context, sig, block, static_future);
+                        transform_sig(context, sig, has_self, false, is_local, static_future);
                         method.attrs.push(lint_suppress_with_body());
 
                         if let Some(ret) = implicit_type_ret {
@@ -198,7 +200,7 @@ fn lint_suppress_without_body() -> Attribute {
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
-// Output (no_box == false):
+// Output (static_future == false):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -209,7 +211,7 @@ fn lint_suppress_without_body() -> Attribute {
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
 //
-// Output (no_box == true):
+// Output (static_future == true):
 //     type Res_f<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + 'async_trait
 //     where
 //         'life0: 'async_trait,
@@ -224,6 +226,7 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
+//         'async_trait: 'life0,
 //         Self: Sync + 'async_trait;
 fn transform_sig(
     context: Context,
@@ -231,7 +234,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
-    no_box: bool,
+    static_future: bool,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -354,7 +357,7 @@ fn transform_sig(
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
 
-    if no_box {
+    if static_future {
         let implicit_type_name = derive_implicit_type_name(&sig.ident);
         let params_clone = sig.generics.params.clone();
         let params_iter = params_clone.into_iter().map(|mut p| {
@@ -388,7 +391,7 @@ fn transform_sig(
 //         self + x + a + b
 //     }
 //
-// Output (no_box == false):
+// Output (static_future == false):
 //     Box::pin(async move {
 //         let ___ret: Ret = {
 //             let __self = self;
@@ -401,7 +404,7 @@ fn transform_sig(
 //         ___ret
 //     })
 //
-// Output (no_box == true):
+// Output (static_future == true):
 //     async move {
 //         let __ret: Ret = {
 //             let __self = self;
@@ -413,7 +416,7 @@ fn transform_sig(
 //
 //         __ret
 //     }
-fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, no_box: bool) {
+fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, static_future: bool) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
@@ -488,7 +491,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, no_
         }
     };
 
-    if no_box {
+    if static_future {
         let async_block = quote_spanned!(block.brace_token.span=>
             async move { #let_ret }
         );
@@ -558,6 +561,14 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
     }
 }
 
+fn static_future(attrs: &[Attribute]) -> bool {
+    for attr in attrs {
+        if attr.path.is_ident("static_future") {
+            return true;
+        }
+    }
+    false
+}
 fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {
     clause.get_or_insert_with(|| WhereClause {
         where_token: Default::default(),

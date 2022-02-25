@@ -303,7 +303,7 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 //!
-//! # Experimental feature: `no_box`
+//! # Experimental feature: `static_future`
 //!
 //! Async fns may get transformed into methods that return
 //! `impl Future + Send + 'async_trait` if `associated_type_bounds`,
@@ -318,8 +318,9 @@
 //! // )]
 //! # use async_trait::async_trait;
 //! #
-//! #[async_trait(no_box)]
+//! #[async_trait]
 //! pub trait MyFastTrait {
+//!     #[static_future]
 //!     async fn cnt_fast(&self) -> usize;
 //!
 //!     // presumably other methods
@@ -327,8 +328,9 @@
 //! #
 //! # struct MyType(usize);
 //! #
-//! # #[async_trait(no_box)]
+//! # #[async_trait]
 //! # impl MyFastTrait for MyType {
+//! #     #[static_future]
 //! #     async fn cnt_fast(&self) -> usize {
 //! #         self.0
 //! #     }
@@ -367,6 +369,11 @@ use syn::parse_macro_input;
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item, args.local, args.no_box);
+    expand(&mut item, args.local);
     TokenStream::from(quote!(#item))
+}
+
+#[proc_macro_attribute]
+pub fn static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
+    input
 }
