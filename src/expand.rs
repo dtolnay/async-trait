@@ -86,6 +86,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if let Some(ret) = implicit_type_ret {
                             let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let mut implicit_type_def: TraitItemType = parse_quote!(
+                                #[allow(missing_docs)]
                                 #[allow(non_camel_case_types)]
                                 type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
                             );
@@ -150,6 +151,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if let Some(ret) = implicit_type_ret {
                             let implicit_type_name = derive_implicit_type_name(&sig.ident);
                             let mut implicit_type_assign: ImplItemType = parse_quote!(
+                                #[allow(missing_docs)]
                                 type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
                             );
                             implicit_type_assign.generics = sig.generics.clone();
