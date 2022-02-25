@@ -89,12 +89,13 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                                 type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
                             );
                             implicit_type_def.generics = sig.generics.clone();
-                            where_clause_or_default(&mut implicit_type_def.generics.where_clause)
+                            if let Some(receiver_lifetime) = receiver_lifetime(sig) {
+                                where_clause_or_default(
+                                    &mut implicit_type_def.generics.where_clause,
+                                )
                                 .predicates
-                                .push(parse_quote!('async_trait: 'life0));
-                            where_clause_or_default(&mut implicit_type_def.generics.where_clause)
-                                .predicates
-                                .push(parse_quote!(Self: 'life0));
+                                .push(parse_quote!('async_trait: #receiver_lifetime));
+                            }
 
                             implicit_associated_types.push(TraitItem::Type(implicit_type_def));
                         }
@@ -150,16 +151,14 @@ pub fn expand(input: &mut Item, is_local: bool, no_box: bool) {
                                 type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
                             );
                             implicit_type_assign.generics = sig.generics.clone();
-                            where_clause_or_default(
-                                &mut implicit_type_assign.generics.where_clause,
-                            )
-                            .predicates
-                            .push(parse_quote!('async_trait: 'life0));
-                            where_clause_or_default(
-                                &mut implicit_type_assign.generics.where_clause,
-                            )
-                            .predicates
-                            .push(parse_quote!(Self: 'life0));
+                            if let Some(receiver_lifetime) = receiver_lifetime(sig) {
+                                where_clause_or_default(
+                                    &mut implicit_type_assign.generics.where_clause,
+                                )
+                                .predicates
+                                .push(parse_quote!('async_trait: #receiver_lifetime));
+                            }
+
                             implicit_associated_type_assigns
                                 .push(ImplItem::Type(implicit_type_assign));
                         }
@@ -362,9 +361,11 @@ fn transform_sig(
             match &mut p {
                 GenericParam::Type(t) => {
                     t.attrs.clear();
+                    t.bounds.clear();
                 }
                 GenericParam::Lifetime(l) => {
                     l.attrs.clear();
+                    l.bounds.clear();
                 }
                 GenericParam::Const(_) => (),
             };
@@ -566,6 +567,17 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 
 fn derive_implicit_type_name(id: &Ident) -> Ident {
     format_ident!("RetType_{}", id)
+}
+
+fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {
+    for arg in sig.inputs.iter() {
+        if let FnArg::Receiver(arg) = arg {
+            if let Some((_, lifetime)) = &arg.reference {
+                return lifetime.as_ref().cloned();
+            }
+        }
+    }
+    None
 }
 
 fn ret_token_stream(ret_type: &ReturnType) -> TokenStream {

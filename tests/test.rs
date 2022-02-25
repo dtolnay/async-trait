@@ -237,7 +237,7 @@ pub async fn test_unimplemented() {
         }
     }
 }
-pub mod fast_async_demo {}
+
 pub mod fast_async {
     use crate::executor;
     use async_trait::async_trait;
@@ -248,27 +248,63 @@ pub mod fast_async {
     #[async_trait(no_box)]
     pub trait FastAsyncTrait {
         async fn add_u8(&self, u: u8) -> usize;
-        async fn clone_ret<T>(&self, t: T) -> (usize, T);
+        async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
+        async fn get_usize_ref<'s>(&'s self) -> &'s usize;
+        async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T);
+        /*
+        async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T;
+        async fn no_self<'t, 'y, T: Default, Y: Clone>(
+            t_mut: &'t mut T,
+            y_ref: &'y Y,
+        ) -> (&'t T, &'y Y);
+        */
     }
 
     #[async_trait(no_box)]
     impl FastAsyncTrait for F {
         async fn add_u8(&self, u: u8) -> usize {
-            println!("HI: {}", u);
             self.0 + (u as usize)
         }
-        async fn clone_ret<T>(&self, t: T) -> (usize, T) {
-            (self.0, t)
+        async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
+            (*u) += self.0;
+            (u, self.0)
         }
+        async fn get_usize_ref<'s>(&'s self) -> &'s usize {
+            &self.0
+        }
+        async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T) {
+            (self.0, t.clone())
+        }
+        /*
+        async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T {
+            *t = T::default();
+            t
+        }
+        async fn no_self<'t, 'y, T: Default, Y: Clone>(
+            t_mut: &'t mut T,
+            y_ref: &'y Y,
+        ) -> (&'t T, &'y Y) {
+            *t_mut = T::default();
+            (t_mut, y_ref)
+        }
+        */
     }
 
     #[test]
     fn test() {
-        let u: u8 = 17;
-        let fut_add_u8 = F(1).add_u8(u);
-        let fut_clone_ret = F(1).clone_ret(2_usize);
-        assert_eq!(executor::block_on_simple(fut_add_u8), (u + 1) as usize);
-        assert_eq!(executor::block_on_simple(fut_clone_ret), (1, 2));
+        let u_small: u8 = 17;
+        let mut u_big: usize = 19;
+        let fut_add_u8 = F(1).add_u8(u_small);
+        let fut_add_usize_mut = F(2).add_usize_mut(&mut u_big);
+        let fut_get_usize_ref = F(3).get_usize_ref();
+        let fut_ret_pair = F(4).clone_ret_pair(2_usize);
+        assert_eq!(
+            executor::block_on_simple(fut_add_u8),
+            (u_small + 1) as usize
+        );
+        assert_eq!(executor::block_on_simple(fut_add_usize_mut), (&mut 21, 2));
+        //assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 3);
+        assert_eq!(executor::block_on_simple(fut_ret_pair), (4, 2));
     }
 }
 
