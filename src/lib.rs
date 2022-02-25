@@ -308,13 +308,13 @@
 //! Async fns may get transformed into methods that return
 //! `impl Future + Send + 'async_trait` if `associated_type_bounds`,
 //! `generic_associated_types`, and `associated_type_bounds` are enabled, and
-//! the trait method does not have default implementation.
+//! the trait methods do not have default implementation.
 //!
 //! ```ignore
 //! // #![feature(
 //! //    associated_type_bounds,
 //! //    generic_associated_types,
-//! //   type_alias_impl_trait
+//! //    type_alias_impl_trait
 //! // )]
 //! # use async_trait::async_trait;
 //! #
