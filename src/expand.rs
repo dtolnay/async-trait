@@ -571,6 +571,7 @@ fn static_future(attrs: &[Attribute]) -> bool {
     }
     false
 }
+
 fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {
     clause.get_or_insert_with(|| WhereClause {
         where_token: Default::default(),
