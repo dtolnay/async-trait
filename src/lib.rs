@@ -305,10 +305,13 @@
 //!
 //! # Experimental feature: `static_future`
 //!
-//! Async fns may get transformed into methods that return
-//! `impl Future + Send + 'async_trait` if `associated_type_bounds`,
-//! `generic_associated_types`, and `associated_type_bounds` are enabled, and
-//! the trait methods do not have default implementation.
+//! An `async fn` without a default implementation may get transformed into a
+//! method that returns `impl Future + Send + 'async_trait` when
+//! `#[macro@static_future]` is invoked on both the trait and the impl blocks.
+//!
+//! `#[macro@static_future]` requires the following unstable language features:
+//! `associated_type_bounds`, `generic_associated_types`, and
+//! `type_alias_impl_trait`.
 //!
 //! ```ignore
 //! // #![feature(
@@ -317,26 +320,28 @@
 //! //    type_alias_impl_trait
 //! // )]
 //! # use async_trait::async_trait;
-//! #
+//!
 //! #[async_trait]
 //! pub trait MyFastTrait {
+//!     /// `cnt_fast` returns an instance of a concrete `Future` type.
 //!     #[static_future]
 //!     async fn cnt_fast(&self) -> usize;
 //!
 //!     // presumably other methods
 //! }
-//! #
-//! # struct MyType(usize);
-//! #
-//! # #[async_trait]
-//! # impl MyFastTrait for MyType {
-//! #     #[static_future]
-//! #     async fn cnt_fast(&self) -> usize {
-//! #         self.0
-//! #     }
-//! # }
-//! #
-//! # let value = MyType(1);
+//!
+//! struct MyType(usize);
+//!
+//! #[async_trait]
+//! impl MyFastTrait for MyType {
+//!     #[static_future]
+//!     async fn cnt_fast(&self) -> usize {
+//!         self.0
+//!     }
+//! }
+//!
+//! let value = MyType(1);
+//! let static_future = value.cnt_fast();
 //! ```
 
 #![allow(

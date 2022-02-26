@@ -180,16 +180,10 @@ fn lint_suppress_without_body() -> Attribute {
 //         Self: Sync + 'async_trait;
 //
 // Output (static_future == true):
-//     type Res_f<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + 'async_trait
-//     where
-//         'life0: 'async_trait,
-//         'life1: 'async_trait,
-//         T: 'async_trait,
-//         Self: Sync + 'async_trait;
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
-//     ) -> Self::Res_f<'_>
+//     ) -> Self::RetType_f<'_>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -578,6 +572,16 @@ fn ret_token_stream(ret_type: &ReturnType) -> TokenStream {
     }
 }
 
+// Input:
+//     async fn f<T>(&self, x: &T) -> Ret;
+//
+// Output:
+//     type RetType_f<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + 'async_trait
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: Sync + 'async_trait;
 fn define_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> TraitItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let mut implicit_type_def: TraitItemType = parse_quote!(
@@ -594,6 +598,17 @@ fn define_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> TraitI
     implicit_type_def
 }
 
+// Input:
+//     async fn f<T>(&self, x: &T) -> Ret;
+//
+// Output:
+//     type RetType_f<'life0, 'life1, 'async_trait, T>
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: Sync + 'async_trait
+//     = impl ::core::future::Future<Output = Ret> + 'async_trait
 fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let mut implicit_type_assign: ImplItemType = parse_quote!(
