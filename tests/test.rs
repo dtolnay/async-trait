@@ -254,14 +254,14 @@ pub mod fast_async {
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
         #[static_future]
-        async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T);
-        /*
+        async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T);
+        #[static_future]
         async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T;
+        #[static_future]
         async fn no_self<'t, 'y, T: Default, Y: Clone>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
         ) -> (&'t T, &'y Y);
-        */
     }
 
     #[async_trait]
@@ -280,14 +280,15 @@ pub mod fast_async {
             &self.0
         }
         #[static_future]
-        async fn clone_ret_pair<T: Clone>(&self, t: T) -> (usize, T) {
-            (self.0, t.clone())
+        async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T) {
+            (self.0, t)
         }
-        /*
+        #[static_future]
         async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T {
             *t = T::default();
             t
         }
+        #[static_future]
         async fn no_self<'t, 'y, T: Default, Y: Clone>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
@@ -295,17 +296,21 @@ pub mod fast_async {
             *t_mut = T::default();
             (t_mut, y_ref)
         }
-        */
     }
 
     #[test]
     fn test() {
         let u_small: u8 = 17;
         let mut u_big: usize = 19;
+        let mut u_reset: usize = 23;
+        let mut i_reset: isize = 29;
+        let i_med: i8 = 31;
         let fut_add_u8 = F(1).add_u8(u_small);
         let fut_add_usize_mut = F(2).add_usize_mut(&mut u_big);
         let fut_get_usize_ref = F(3).get_usize_ref();
         let fut_ret_pair = F(4).clone_ret_pair(2_usize);
+        let fut_reset_t_mut = F(5).reset_t_mut(&mut u_reset);
+        let fut_no_self = F::no_self(&mut i_reset, &i_med);
         assert_eq!(
             executor::block_on_simple(fut_add_u8),
             (u_small + 1) as usize
@@ -313,6 +318,9 @@ pub mod fast_async {
         assert_eq!(executor::block_on_simple(fut_add_usize_mut), (&mut 21, 2));
         assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 3);
         assert_eq!(executor::block_on_simple(fut_ret_pair), (4, 2));
+        assert_eq!(*executor::block_on_simple(fut_reset_t_mut), 0);
+        assert_eq!(u_reset, 0);
+        assert_eq!(executor::block_on_simple(fut_no_self), (&0, &31));
     }
 }
 
