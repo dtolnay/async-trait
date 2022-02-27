@@ -1,11 +1,13 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(min_specialization, type_alias_impl_trait)
-)]
-#![feature(
-    associated_type_bounds,
-    generic_associated_types,
-    type_alias_impl_trait
+    feature(
+        min_specialization,
+        associated_type_bounds,
+        generic_associated_types,
+        type_alias_impl_trait,
+        associated_type_bounds,
+        generic_associated_types,
+    )
 )]
 #![allow(
     clippy::let_underscore_drop,
@@ -238,6 +240,7 @@ pub async fn test_unimplemented() {
     }
 }
 
+#[cfg(async_trait_nightly_testing)]
 pub mod fast_async {
     use crate::executor;
     use async_trait::{async_trait, static_future};
@@ -251,6 +254,8 @@ pub mod fast_async {
         async fn add_u8(&self, u: u8) -> usize;
         #[static_future]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
+        #[static_future]
+        async fn sum_array(&self, u: &[u8]) -> usize;
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
         #[static_future]
@@ -274,6 +279,10 @@ pub mod fast_async {
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
             (*u) += self.0;
             (u, self.0)
+        }
+        #[static_future]
+        async fn sum_array(&self, u: &[u8]) -> usize {
+            u.iter().sum::<u8>() as usize
         }
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize {
@@ -303,24 +312,36 @@ pub mod fast_async {
         let u_small: u8 = 17;
         let mut u_big: usize = 19;
         let mut u_reset: usize = 23;
+        let u_array = [1_u8, 2_u8, 1_u8, 3_u8];
         let mut i_reset: isize = 29;
         let i_med: i8 = 31;
         let fut_add_u8 = F(1).add_u8(u_small);
         let fut_add_usize_mut = F(2).add_usize_mut(&mut u_big);
-        let fut_get_usize_ref = F(3).get_usize_ref();
-        let fut_ret_pair = F(4).clone_ret_pair(2_usize);
-        let fut_reset_t_mut = F(5).reset_t_mut(&mut u_reset);
+        let fut_sum_array = F(3).sum_array(&u_array);
+        let fut_get_usize_ref = F(4).get_usize_ref();
+        let fut_ret_pair = F(5).clone_ret_pair(2_usize);
+        let fut_reset_t_mut = F(6).reset_t_mut(&mut u_reset);
         let fut_no_self = F::no_self(&mut i_reset, &i_med);
         assert_eq!(
             executor::block_on_simple(fut_add_u8),
             (u_small + 1) as usize
         );
         assert_eq!(executor::block_on_simple(fut_add_usize_mut), (&mut 21, 2));
-        assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 3);
-        assert_eq!(executor::block_on_simple(fut_ret_pair), (4, 2));
+        assert_eq!(executor::block_on_simple(fut_sum_array), 7);
+        assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 4);
+        assert_eq!(executor::block_on_simple(fut_ret_pair), (5, 2));
         assert_eq!(*executor::block_on_simple(fut_reset_t_mut), 0);
         assert_eq!(u_reset, 0);
         assert_eq!(executor::block_on_simple(fut_no_self), (&0, &31));
+
+        let mut f = F(7);
+        let new_f = {
+            let mut str: String = "hi".into();
+            let fut_reset_t_mut = f.reset_t_mut(&mut str);
+            executor::block_on_simple(fut_reset_t_mut).len()
+        };
+        f.0 = new_f;
+        assert_eq!(f.0, 0);
     }
 }
 

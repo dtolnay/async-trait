@@ -188,7 +188,6 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         'async_trait: 'life0,
 //         Self: Sync + 'async_trait;
 fn transform_sig(
     context: Context,
@@ -581,12 +580,17 @@ fn ret_token_stream(ret_type: &ReturnType) -> TokenStream {
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: Sync + 'async_trait;
+//         Self: Sync + 'async_trait,
+//         'async_trait: 'life0;
 fn define_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> TraitItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
+    let generated_doc = format!(
+        "Automatically generated return type placeholder for [`Self::{}`]",
+        sig.ident
+    );
     let mut implicit_type_def: TraitItemType = parse_quote!(
-        #[allow(missing_docs)]
         #[allow(non_camel_case_types)]
+        #[doc = #generated_doc]
         type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
     );
     implicit_type_def.generics = sig.generics.clone();
@@ -608,11 +612,16 @@ fn define_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> TraitI
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait
+//         'async_trait: 'life0
 //     = impl ::core::future::Future<Output = Ret> + 'async_trait
 fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
+    let generated_doc = format!(
+        "Automatically generated return type for [`Self::{}`]",
+        sig.ident
+    );
     let mut implicit_type_assign: ImplItemType = parse_quote!(
-        #[allow(missing_docs)]
+        #[doc = #generated_doc]
         type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
     );
     implicit_type_assign.generics = sig.generics.clone();
