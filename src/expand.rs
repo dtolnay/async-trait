@@ -89,7 +89,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if static_ret {
                             let type_def = define_implicit_associated_type(sig, &ret);
                             implicit_associated_types.push(TraitItem::Type(type_def));
-                            method.attrs.push(generate_fn_doc(sig, &ret));
+                            generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
                     }
                 }
@@ -133,7 +133,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         if static_ret {
                             let type_assign = assign_implicit_associated_type(sig, &ret);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
-                            method.attrs.push(generate_fn_doc(sig, &ret));
+                            generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
                         method.attrs.push(lint_suppress_with_body());
                     }
@@ -546,20 +546,23 @@ fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplIt
 //
 // Output:
 //     /// Doc.
-//     /// > _This method returns an [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
+//     /// ***
+//     /// _This method returns an [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
 //     async fn f<T>(&self, x: &T) -> Ret;
-fn generate_fn_doc(sig: &Signature, ret: &TokenStream) -> Attribute {
+fn generate_fn_doc(sig: &Signature, ret: &TokenStream, attrs: &mut Vec<Attribute>) {
+    let separator = quote! {
+        #[doc = "***"]
+    };
+    attrs.push(parse_quote!(#separator));
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let doc = format!(
-        "> _This method returns an [`impl Future<Output = {}>`](Self::{})._",
+        "_This method returns an [`impl Future<Output = {}>`](Self::{})._",
         ret, implicit_type_name
     );
-    let doc_token_stream = {
-        quote! {
-            #[doc = #doc]
-        }
+    let doc_token_stream = quote! {
+        #[doc = #doc]
     };
-    parse_quote!(#doc_token_stream)
+    attrs.push(parse_quote!(#doc_token_stream));
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
