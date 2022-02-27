@@ -248,18 +248,42 @@ pub mod fast_async {
 
     #[async_trait]
     pub trait FastAsyncTrait {
+        /// Converts `u8` into `usize`.
+        ///
+        /// # Errors
+        ///
+        /// None.
+        ///
+        /// # Panics
+        ///
+        /// None.
         #[static_future]
         async fn add_u8(&self, u: u8) -> usize;
+
+        /// Adds `self.0` and the given `usize`.
+        ///
+        /// # Errors
+        ///
+        /// None.
+        ///
+        /// # Panics
+        ///
+        /// None.
         #[static_future]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
+
         #[static_future]
         async fn sum_array(&self, u: &[u8]) -> usize;
+
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
+
         #[static_future]
         async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T);
+
         #[static_future]
         async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T;
+
         #[static_future]
         async fn no_self<'t, 'y, T: Default, Y: Clone>(
             t_mut: &'t mut T,
@@ -269,32 +293,40 @@ pub mod fast_async {
 
     #[async_trait]
     impl FastAsyncTrait for F {
+        /// It implements [`FastAsyncTrait::add_u8`].
         #[static_future]
         async fn add_u8(&self, u: u8) -> usize {
             self.0 + (u as usize)
         }
+
         #[static_future]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
             (*u) += self.0;
             (u, self.0)
         }
+
+        /// It implements [`FastAsyncTrait::sum_array`].
         #[static_future]
         async fn sum_array(&self, u: &[u8]) -> usize {
             u.iter().sum::<u8>() as usize
         }
+
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize {
             &self.0
         }
+
         #[static_future]
         async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T) {
             (self.0, t)
         }
+
         #[static_future]
         async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T {
             *t = T::default();
             t
         }
+
         #[static_future]
         async fn no_self<'t, 'y, T: Default, Y: Clone>(
             t_mut: &'t mut T,

@@ -308,7 +308,6 @@
 //! An `async fn` without a default implementation may get transformed into a
 //! method that returns `impl Future + Send + 'async_trait` when
 //! `#[macro@static_future]` is invoked on both the trait and the impl blocks.
-//!
 //! `#[macro@static_future]` requires the following unstable language features:
 //! `associated_type_bounds`, `generic_associated_types`, and
 //! `type_alias_impl_trait`.
