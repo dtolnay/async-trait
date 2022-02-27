@@ -1,12 +1,10 @@
 #![cfg_attr(
     async_trait_nightly_testing,
     feature(
+        associated_type_bounds,
+        generic_associated_types,
         min_specialization,
-        associated_type_bounds,
-        generic_associated_types,
         type_alias_impl_trait,
-        associated_type_bounds,
-        generic_associated_types,
     )
 )]
 #![allow(
