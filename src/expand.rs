@@ -546,17 +546,22 @@ fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplIt
 //
 // Output:
 //     /// Doc.
+//     ///
 //     /// ***
-//     /// _This method returns an [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
+//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
 //     async fn f<T>(&self, x: &T) -> Ret;
 fn generate_fn_doc(sig: &Signature, ret: &TokenStream, attrs: &mut Vec<Attribute>) {
+    let newline = quote! {
+        #[doc = ""]
+    };
+    attrs.push(parse_quote!(#newline));
     let separator = quote! {
         #[doc = "***"]
     };
     attrs.push(parse_quote!(#separator));
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let doc = format!(
-        "_This method returns an [`impl Future<Output = {}>`](Self::{})._",
+        "_This is an asynchronous method returning [`impl Future<Output = {}>`](Self::{})._",
         ret, implicit_type_name
     );
     let doc_token_stream = quote! {
