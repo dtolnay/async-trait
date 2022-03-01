@@ -365,14 +365,20 @@ pub mod fast_async {
         assert_eq!(u_reset, 0);
         assert_eq!(run(fut_no_self), (&0, &31));
 
-        let mut f = F(7);
-        let new_f = {
-            let mut str: String = "hi".into();
-            let fut_reset_t_mut = f.reset_t_mut(&mut str);
-            executor::block_on_simple(fut_reset_t_mut).len()
-        };
-        f.0 = new_f;
-        assert_eq!(f.0, 0);
+        let mut str_2: String = "hoo".into();
+        {
+            let mut f = F(7);
+            let new_f = {
+                let mut str_1: String = "hi".into();
+                let fut_reset_t_mut_1 = f.reset_t_mut(&mut str_1);
+                let len1 = executor::block_on_simple(fut_reset_t_mut_1).len();
+                let fut_reset_t_mut_2 = f.reset_t_mut(&mut str_2);
+                let len2 = executor::block_on_simple(fut_reset_t_mut_2).len();
+                len1 + len2
+            };
+            f.0 = new_f;
+            assert_eq!(f.0, 0);
+        }
     }
 }
 

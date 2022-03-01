@@ -186,7 +186,7 @@ fn lint_suppress_without_body() -> Attribute {
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
-//     ) -> Self::RetTypeOfF<'_>
+//     ) -> Self::RetTypeOfF<'life0, 'life1, 'async_trait>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -219,9 +219,10 @@ fn transform_sig(
                     if let Type::Reference(ref_ty) = &*arg.ty {
                         if let Some(lifetime) = ref_ty.lifetime.as_ref() {
                             let span = lifetime.span();
+                            let ty = &*ref_ty.elem;
                             where_clause_or_default(&mut sig.generics.where_clause)
                                 .predicates
-                                .push(parse_quote_spanned!(span=> #ref_ty: #lifetime));
+                                .push(parse_quote_spanned!(span=> #ty: #lifetime));
                         }
                     }
                 }
@@ -326,7 +327,9 @@ fn transform_sig(
     }
 
     let ret_span = sig.ident.span();
-    let bounds = if is_local {
+    let bounds = if static_future {
+        quote_spanned!(ret_span=>)
+    } else if is_local {
         quote_spanned!(ret_span=> 'async_trait)
     } else {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
@@ -483,12 +486,12 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: Sync + 'async_trait,
+//         Self: 'async_trait,
 //         'async_trait: 'life0;
 fn define_implicit_associated_type(
     sig: &Signature,
@@ -503,12 +506,12 @@ fn define_implicit_associated_type(
     let mut implicit_type_def: TraitItemType = if is_local {
         parse_quote!(
             #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
+            type #implicit_type_name: ::core::future::Future<Output = #ret>;
         )
     } else {
         parse_quote!(
             #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
+            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send;
         )
     };
     implicit_type_def.generics = sig.generics.clone();
@@ -531,7 +534,7 @@ fn define_implicit_associated_type(
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait
 //         'async_trait: 'life0
-//     = impl ::core::future::Future<Output = Ret> + 'async_trait
+//     = impl ::core::future::Future<Output = Ret>;
 fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
@@ -540,7 +543,7 @@ fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplIt
     );
     let mut implicit_type_assign: ImplItemType = parse_quote!(
         #[doc = #generated_doc]
-        type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
+        type #implicit_type_name = impl ::core::future::Future<Output = #ret>;
     );
     implicit_type_assign.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
