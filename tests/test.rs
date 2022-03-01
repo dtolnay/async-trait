@@ -279,13 +279,13 @@ pub mod fast_async {
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
 
         #[static_future]
-        async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T);
+        async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T);
 
         #[static_future]
-        async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T;
+        async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T;
 
         #[static_future]
-        async fn no_self<'t, 'y, T: Default, Y: Clone>(
+        async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
         ) -> (&'t T, &'y Y);
@@ -317,24 +317,28 @@ pub mod fast_async {
         }
 
         #[static_future]
-        async fn clone_ret_pair<T: Clone + Copy>(&self, t: T) -> (usize, T) {
+        async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T) {
             (self.0, t)
         }
 
         #[static_future]
-        async fn reset_t_mut<'t, T: Default>(&self, t: &'t mut T) -> &'t mut T {
+        async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T {
             *t = T::default();
             t
         }
 
         #[static_future]
-        async fn no_self<'t, 'y, T: Default, Y: Clone>(
+        async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
         ) -> (&'t T, &'y Y) {
             *t_mut = T::default();
             (t_mut, y_ref)
         }
+    }
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
     }
 
     #[test]
@@ -352,17 +356,14 @@ pub mod fast_async {
         let fut_ret_pair = F(5).clone_ret_pair(2_usize);
         let fut_reset_t_mut = F(6).reset_t_mut(&mut u_reset);
         let fut_no_self = F::no_self(&mut i_reset, &i_med);
-        assert_eq!(
-            executor::block_on_simple(fut_add_u8),
-            (u_small + 1) as usize
-        );
-        assert_eq!(executor::block_on_simple(fut_add_usize_mut), (&mut 21, 2));
-        assert_eq!(executor::block_on_simple(fut_sum_array), 7);
-        assert_eq!(*executor::block_on_simple(fut_get_usize_ref), 4);
-        assert_eq!(executor::block_on_simple(fut_ret_pair), (5, 2));
-        assert_eq!(*executor::block_on_simple(fut_reset_t_mut), 0);
+        assert_eq!(run(fut_add_u8), (u_small + 1) as usize);
+        assert_eq!(run(fut_add_usize_mut), (&mut 21, 2));
+        assert_eq!(run(fut_sum_array), 7);
+        assert_eq!(*run(fut_get_usize_ref), 4);
+        assert_eq!(run(fut_ret_pair), (5, 2));
+        assert_eq!(*run(fut_reset_t_mut), 0);
         assert_eq!(u_reset, 0);
-        assert_eq!(executor::block_on_simple(fut_no_self), (&0, &31));
+        assert_eq!(run(fut_no_self), (&0, &31));
 
         let mut f = F(7);
         let new_f = {
@@ -372,6 +373,100 @@ pub mod fast_async {
         };
         f.0 = new_f;
         assert_eq!(f.0, 0);
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod fast_async_dep {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    #[derive(Default)]
+    struct F(usize);
+
+    pub trait Dep<'l> {
+        fn create(y: &'l usize) -> Self;
+        fn inc_usize(&self, x: &'l mut usize) -> &'l mut usize;
+    }
+
+    struct DepDefault<'l> {
+        y: &'l usize,
+    }
+
+    impl<'l> Dep<'l> for DepDefault<'l> {
+        fn create(y: &'l usize) -> Self {
+            DepDefault { y }
+        }
+        fn inc_usize(&self, x: &'l mut usize) -> &'l mut usize {
+            (*x) += self.y;
+            x
+        }
+    }
+
+    #[async_trait]
+    pub trait FastAsyncTrait {
+        type D<'l>: Dep<'l> + Send;
+        type DI<'l>: Iterator<Item = Self::D<'l>> + Send;
+
+        #[static_future]
+        async fn get_dep<'l>(&'l self) -> Self::D<'l>;
+
+        #[static_future]
+        async fn call_dep<'d>(&self, d: Self::D<'d>, x: &mut usize) -> usize;
+
+        #[static_future]
+        async fn iter<'i>(&'i self) -> Self::DI<'i>;
+    }
+
+    #[async_trait]
+    impl FastAsyncTrait for F {
+        type D<'l> = DepDefault<'l>;
+        type DI<'l> = I<'l>;
+
+        #[static_future]
+        async fn get_dep<'l>(&'l self) -> Self::D<'l> {
+            Self::D::<'l>::create(&self.0)
+        }
+
+        #[static_future]
+        async fn call_dep<'d>(&self, d: Self::D<'d>, x: &mut usize) -> usize {
+            *d.inc_usize(x)
+        }
+
+        #[static_future]
+        async fn iter<'i>(&'i self) -> Self::DI<'i> {
+            I { _y: self }
+        }
+    }
+
+    struct I<'l> {
+        _y: &'l F,
+    }
+
+    impl<'l> Iterator for I<'l> {
+        type Item = DepDefault<'l>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            None
+        }
+    }
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    #[test]
+    fn test() {
+        let f = F(10);
+        let fut_get_dep = f.get_dep();
+        let dep = run(fut_get_dep);
+        let mut x = 19;
+        let fut_res = f.call_dep(dep, &mut x);
+        let res = run(fut_res);
+        assert_eq!(res, 29);
+        let fut_iter = f.iter();
+        let mut iter = run(fut_iter);
+        assert!(iter.next().is_none());
     }
 }
 

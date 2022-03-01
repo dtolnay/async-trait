@@ -87,7 +87,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             static_ret,
                         );
                         if static_ret {
-                            let type_def = define_implicit_associated_type(sig, &ret);
+                            let type_def = define_implicit_associated_type(sig, &ret, is_local);
                             implicit_associated_types.push(TraitItem::Type(type_def));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
@@ -483,23 +483,34 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + 'async_trait
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait,
 //         'async_trait: 'life0;
-fn define_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> TraitItemType {
+fn define_implicit_associated_type(
+    sig: &Signature,
+    ret: &TokenStream,
+    is_local: bool,
+) -> TraitItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
         "Automatically generated return type placeholder for [`Self::{}`]",
         sig.ident
     );
-    let mut implicit_type_def: TraitItemType = parse_quote!(
-        #[doc = #generated_doc]
-        type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
-    );
+    let mut implicit_type_def: TraitItemType = if is_local {
+        parse_quote!(
+            #[doc = #generated_doc]
+            type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
+        )
+    } else {
+        parse_quote!(
+            #[doc = #generated_doc]
+            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
+        )
+    };
     implicit_type_def.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_def.generics.where_clause)
