@@ -1,7 +1,6 @@
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
-use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
@@ -186,7 +185,7 @@ fn lint_suppress_without_body() -> Attribute {
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
-//     ) -> Self::RetTypeOfF<'life0, 'life1, 'async_trait>
+//     ) -> Self::RetType_f<'life0, 'life1, 'async_trait>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -327,9 +326,7 @@ fn transform_sig(
     }
 
     let ret_span = sig.ident.span();
-    let bounds = if static_future {
-        quote_spanned!(ret_span=>)
-    } else if is_local {
+    let bounds = if is_local {
         quote_spanned!(ret_span=> 'async_trait)
     } else {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
@@ -486,7 +483,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send
+//     type RetType_f<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -505,11 +502,13 @@ fn define_implicit_associated_type(
     );
     let mut implicit_type_def: TraitItemType = if is_local {
         parse_quote!(
+            #[allow(non_camel_case_types)]
             #[doc = #generated_doc]
             type #implicit_type_name: ::core::future::Future<Output = #ret>;
         )
     } else {
         parse_quote!(
+            #[allow(non_camel_case_types)]
             #[doc = #generated_doc]
             type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send;
         )
@@ -527,14 +526,14 @@ fn define_implicit_associated_type(
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>
+//     type RetType_f<'life0, 'life1, 'async_trait, T>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait
 //         'async_trait: 'life0
-//     = impl ::core::future::Future<Output = Ret>;
+//     = impl ::core::future::Future<Output = Ret> + 'async_trait;
 fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
@@ -562,7 +561,7 @@ fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplIt
 //     /// Doc.
 //     ///
 //     /// ***
-//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
+//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetType_f)._
 //     async fn f<T>(&self, x: &T) -> Ret;
 fn generate_fn_doc(sig: &Signature, ret: &TokenStream, attrs: &mut Vec<Attribute>) {
     let newline = quote! {
@@ -658,7 +657,7 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 }
 
 fn derive_implicit_type_name(id: &Ident) -> Ident {
-    format_ident!("RetTypeOf{}", id.to_string().to_case(Case::UpperCamel))
+    format_ident!("RetType_{}", id.to_string())
 }
 
 fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {

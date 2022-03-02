@@ -15,7 +15,6 @@ keywords = ["async"]
 proc-macro = true
 
 [dependencies]
-convert_case = "0.5"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0.84", features = ["full", "visit-mut"] }
