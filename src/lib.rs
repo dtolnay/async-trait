@@ -378,6 +378,6 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn static_future(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
