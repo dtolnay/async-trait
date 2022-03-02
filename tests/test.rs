@@ -412,7 +412,9 @@ pub mod fast_async_dep {
     #[async_trait]
     pub trait FastAsyncTrait {
         type D<'l>: Dep<'l> + Send;
-        type DI<'l>: Iterator<Item = Self::D<'l>> + Send;
+        type DI<'l>: Iterator<Item = Self::D<'l>> + Send
+        where
+            Self: 'l;
 
         #[static_future]
         async fn get_dep<'l>(&'l self) -> Self::D<'l>;
