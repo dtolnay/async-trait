@@ -411,7 +411,9 @@ pub mod fast_async_dep {
 
     #[async_trait]
     pub trait FastAsyncTrait {
-        type D<'l>: Dep<'l> + Send;
+        type D<'l>: Dep<'l> + Send
+        where
+            Self: 'l;
         type DI<'l>: Iterator<Item = Self::D<'l>> + Send
         where
             Self: 'l;
@@ -420,7 +422,7 @@ pub mod fast_async_dep {
         async fn get_dep<'l>(&'l self) -> Self::D<'l>;
 
         #[static_future]
-        async fn call_dep<'d>(&self, d: Self::D<'d>, x: &mut usize) -> usize;
+        async fn call_dep<'d>(&'d self, d: Self::D<'d>, x: &mut usize) -> usize;
 
         #[static_future]
         async fn iter<'i>(&'i self) -> Self::DI<'i>;
@@ -437,7 +439,7 @@ pub mod fast_async_dep {
         }
 
         #[static_future]
-        async fn call_dep<'d>(&self, d: Self::D<'d>, x: &mut usize) -> usize {
+        async fn call_dep<'d>(&'d self, d: Self::D<'d>, x: &mut usize) -> usize {
             *d.inc_usize(x)
         }
 

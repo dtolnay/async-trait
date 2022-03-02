@@ -191,6 +191,7 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
+#[allow(clippy::fn_params_excessive_bools)]
 fn transform_sig(
     context: Context,
     sig: &mut Signature,
