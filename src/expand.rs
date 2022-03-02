@@ -190,7 +190,7 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: Sync + 'async_trait;
+//         Self: 'async_trait;
 #[allow(clippy::fn_params_excessive_bools)]
 fn transform_sig(
     context: Context,
@@ -489,8 +489,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: 'async_trait,
-//         'async_trait: 'life0;
+//         Self: 'async_trait;
 fn define_implicit_associated_type(
     sig: &Signature,
     ret: &TokenStream,
@@ -503,22 +502,24 @@ fn define_implicit_associated_type(
     );
     let mut implicit_type_def: TraitItemType = if is_local {
         parse_quote!(
+            #[allow(clippy::type_repetition_in_bounds)]
             #[allow(non_camel_case_types)]
             #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret>;
+            type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
         )
     } else {
         parse_quote!(
+            #[allow(clippy::type_repetition_in_bounds)]
             #[allow(non_camel_case_types)]
             #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send;
+            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
         )
     };
     implicit_type_def.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_def.generics.where_clause)
             .predicates
-            .push(parse_quote!('async_trait: #receiver_lifetime));
+            .push(parse_quote!(Self: #receiver_lifetime));
     }
     implicit_type_def
 }
@@ -532,9 +533,8 @@ fn define_implicit_associated_type(
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: Sync + 'async_trait
-//         'async_trait: 'life0
-//     = impl ::core::future::Future<Output = Ret> + 'async_trait;
+//         Self: 'async_trait
+//     = impl Future<Output = Ret> + 'async_trait;
 fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
@@ -542,14 +542,15 @@ fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplIt
         sig.ident
     );
     let mut implicit_type_assign: ImplItemType = parse_quote!(
+        #[allow(clippy::type_repetition_in_bounds)]
         #[doc = #generated_doc]
-        type #implicit_type_name = impl ::core::future::Future<Output = #ret>;
+        type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
     );
     implicit_type_assign.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_assign.generics.where_clause)
             .predicates
-            .push(parse_quote!('async_trait: #receiver_lifetime));
+            .push(parse_quote!(Self: #receiver_lifetime));
     }
     implicit_type_assign
 }
@@ -643,8 +644,10 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
 
 fn contains_static_future_attr(attrs: &[Attribute]) -> bool {
     for attr in attrs {
-        if attr.path.is_ident("static_future") {
-            return true;
+        if let Some(seg) = attr.path.segments.last() {
+            if seg.ident == "static_future" {
+                return true;
+            }
         }
     }
     false

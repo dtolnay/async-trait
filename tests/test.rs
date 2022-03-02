@@ -239,7 +239,9 @@ pub async fn test_unimplemented() {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod fast_async {
+pub mod static_future {
+    use std::usize;
+
     use crate::executor;
     use async_trait::{async_trait, static_future};
 
@@ -274,6 +276,12 @@ pub mod fast_async {
 
         #[static_future]
         async fn sum_array(&self, u: &[u8]) -> usize;
+
+        #[static_future]
+        async fn get_len(&mut self, s: &str) -> usize;
+
+        #[static_future]
+        async fn sum_len(&mut self, s1: &str, s2: &str) -> usize;
 
         #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
@@ -312,6 +320,20 @@ pub mod fast_async {
         }
 
         #[static_future]
+        async fn get_len(&mut self, s: &str) -> usize {
+            self.0 = s.len();
+            self.0
+        }
+
+        #[static_future]
+        async fn sum_len(&mut self, s1: &str, s2: &str) -> usize {
+            let len1 = self.get_len(s1).await;
+            let len2 = self.get_len(s2).await;
+            self.0 = len1 + len2;
+            self.0
+        }
+
+        #[static_future]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize {
             &self.0
         }
@@ -347,8 +369,11 @@ pub mod fast_async {
         let mut u_big: usize = 19;
         let mut u_reset: usize = 23;
         let u_array = [1_u8, 2_u8, 1_u8, 3_u8];
+        let (str1, str2) = ("Hello".to_owned(), "Hi".to_owned());
         let mut i_reset: isize = 29;
         let i_med: i8 = 31;
+        let mut f_0 = F(0);
+        let fut_sum_len = f_0.sum_len(&str1, &str2);
         let fut_add_u8 = F(1).add_u8(u_small);
         let fut_add_usize_mut = F(2).add_usize_mut(&mut u_big);
         let fut_sum_array = F(3).sum_array(&u_array);
@@ -356,6 +381,7 @@ pub mod fast_async {
         let fut_ret_pair = F(5).clone_ret_pair(2_usize);
         let fut_reset_t_mut = F(6).reset_t_mut(&mut u_reset);
         let fut_no_self = F::no_self(&mut i_reset, &i_med);
+        assert_eq!(run(fut_sum_len), 7);
         assert_eq!(run(fut_add_u8), (u_small + 1) as usize);
         assert_eq!(run(fut_add_usize_mut), (&mut 21, 2));
         assert_eq!(run(fut_sum_array), 7);
@@ -365,14 +391,14 @@ pub mod fast_async {
         assert_eq!(u_reset, 0);
         assert_eq!(run(fut_no_self), (&0, &31));
 
-        let mut str_2: String = "hoo".into();
+        let mut hoo: String = "hoo".into();
         {
             let mut f = F(7);
             let new_f = {
-                let mut str_1: String = "hi".into();
-                let fut_reset_t_mut_1 = f.reset_t_mut(&mut str_1);
+                let mut hi: String = "hi".into();
+                let fut_reset_t_mut_1 = f.reset_t_mut(&mut hi);
                 let len1 = executor::block_on_simple(fut_reset_t_mut_1).len();
-                let fut_reset_t_mut_2 = f.reset_t_mut(&mut str_2);
+                let fut_reset_t_mut_2 = f.reset_t_mut(&mut hoo);
                 let len2 = executor::block_on_simple(fut_reset_t_mut_2).len();
                 len1 + len2
             };
@@ -383,7 +409,7 @@ pub mod fast_async {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod fast_async_dep {
+pub mod static_future_dep {
     use crate::executor;
     use async_trait::{async_trait, static_future};
 
@@ -425,7 +451,7 @@ pub mod fast_async_dep {
         async fn call_dep<'d>(&'d self, d: Self::D<'d>, x: &mut usize) -> usize;
 
         #[static_future]
-        async fn iter<'i>(&'i self) -> Self::DI<'i>;
+        async fn fake_iter<'i>(&'i self) -> Self::DI<'i>;
     }
 
     #[async_trait]
@@ -444,7 +470,7 @@ pub mod fast_async_dep {
         }
 
         #[static_future]
-        async fn iter<'i>(&'i self) -> Self::DI<'i> {
+        async fn fake_iter<'i>(&'i self) -> Self::DI<'i> {
             I { _y: self }
         }
     }
@@ -474,7 +500,7 @@ pub mod fast_async_dep {
         let fut_res = f.call_dep(dep, &mut x);
         let res = run(fut_res);
         assert_eq!(res, 29);
-        let fut_iter = f.iter();
+        let fut_iter = f.fake_iter();
         let mut iter = run(fut_iter);
         assert!(iter.next().is_none());
     }
