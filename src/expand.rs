@@ -533,7 +533,7 @@ fn define_implicit_associated_type(
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: 'life0,
+//         Self: 'life0
 //     = impl Future<Output = Ret> + Send + 'async_trait;
 fn assign_implicit_associated_type(
     sig: &Signature,
@@ -656,8 +656,12 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
 
 fn contains_static_future_attr(attrs: &[Attribute]) -> bool {
     for attr in attrs {
-        if let Some(seg) = attr.path.segments.last() {
-            if seg.ident == "static_future" {
+        if let Some(last_seg) = attr.path.segments.last() {
+            if last_seg.ident == "static_future" {
+                let segment_len = attr.path.segments.len();
+                if segment_len != 1 {
+                    return attr.path.segments[segment_len - 2].ident == "async_trait";
+                }
                 return true;
             }
         }

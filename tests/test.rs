@@ -262,7 +262,7 @@ pub mod static_future {
         /// # Panics
         ///
         /// None.
-        #[static_future]
+        #[async_trait::static_future]
         async fn add_u8(&self, u: u8) -> usize;
 
         async fn add_u8_1_wrap(&self) -> usize;
@@ -531,6 +531,22 @@ pub mod static_future_dep {
         }
     }
 
+    #[async_trait]
+    pub trait AsyncTrait<F: FastAsyncTrait> {
+        async fn dep(&self, f: F) -> usize;
+    }
+
+    struct A(usize);
+
+    #[async_trait]
+    impl AsyncTrait<F> for A {
+        async fn dep(&self, f: F) -> usize {
+            let dep = f.get_dep().await;
+            let mut x = self.0;
+            f.call_dep(dep, &mut x).await
+        }
+    }
+
     fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
         executor::block_on_simple(f)
     }
@@ -547,6 +563,8 @@ pub mod static_future_dep {
         let fut_iter = f.fake_iter();
         let mut iter = run(fut_iter);
         assert!(iter.next().is_none());
+        let fut_a = A(11).dep(F(7));
+        assert_eq!(executor::block_on_simple(fut_a), 18);
     }
 }
 
