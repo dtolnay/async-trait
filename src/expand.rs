@@ -130,7 +130,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         transform_block(context, sig, block, static_ret);
                         transform_sig(context, sig, &ret, has_self, false, is_local, static_ret);
                         if static_ret {
-                            let type_assign = assign_implicit_associated_type(sig, &ret);
+                            let type_assign = assign_implicit_associated_type(sig, &ret, is_local);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
@@ -489,7 +489,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: 'async_trait;
+//         Self: 'life0;
 fn define_implicit_associated_type(
     sig: &Signature,
     ret: &TokenStream,
@@ -533,19 +533,31 @@ fn define_implicit_associated_type(
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
 //         T: 'async_trait,
-//         Self: 'async_trait
-//     = impl Future<Output = Ret> + 'async_trait;
-fn assign_implicit_associated_type(sig: &Signature, ret: &TokenStream) -> ImplItemType {
+//         Self: 'life0,
+//     = impl Future<Output = Ret> + Send + 'async_trait;
+fn assign_implicit_associated_type(
+    sig: &Signature,
+    ret: &TokenStream,
+    is_local: bool,
+) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
         "Automatically generated return type for [`Self::{}`]",
         sig.ident
     );
-    let mut implicit_type_assign: ImplItemType = parse_quote!(
-        #[allow(clippy::type_repetition_in_bounds)]
-        #[doc = #generated_doc]
-        type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
-    );
+    let mut implicit_type_assign: ImplItemType = if is_local {
+        parse_quote!(
+            #[allow(clippy::type_repetition_in_bounds)]
+            #[doc = #generated_doc]
+            type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
+        )
+    } else {
+        parse_quote!(
+            #[allow(clippy::type_repetition_in_bounds)]
+            #[doc = #generated_doc]
+            type #implicit_type_name = impl ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
+        )
+    };
     implicit_type_assign.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_assign.generics.where_clause)

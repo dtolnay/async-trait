@@ -246,7 +246,10 @@ pub mod static_future {
     use async_trait::{async_trait, static_future};
 
     #[derive(Default)]
-    struct F(usize);
+    pub struct F(usize);
+
+    #[derive(Default)]
+    pub struct O(usize);
 
     #[async_trait]
     pub trait FastAsyncTrait {
@@ -261,6 +264,8 @@ pub mod static_future {
         /// None.
         #[static_future]
         async fn add_u8(&self, u: u8) -> usize;
+
+        async fn add_u8_1_wrap(&self) -> usize;
 
         /// Adds `self.0` and the given `usize`.
         ///
@@ -305,6 +310,10 @@ pub mod static_future {
         #[static_future]
         async fn add_u8(&self, u: u8) -> usize {
             self.0 + (u as usize)
+        }
+
+        async fn add_u8_1_wrap(&self) -> usize {
+            self.add_u8(1).await
         }
 
         #[static_future]
@@ -359,12 +368,30 @@ pub mod static_future {
         }
     }
 
+    impl F {
+        async fn add_u8_one(&self) -> usize {
+            self.add_u8(1).await
+        }
+    }
+
+    #[async_trait]
+    pub trait ChildTrait {
+        async fn add_u8_ref(&self, f: &F, u: &u8) -> usize;
+    }
+
+    #[async_trait]
+    impl ChildTrait for O {
+        async fn add_u8_ref(&self, f: &F, u: &u8) -> usize {
+            F(f.0 + self.0).add_u8(*u).await
+        }
+    }
+
     fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
         executor::block_on_simple(f)
     }
 
     #[test]
-    fn test() {
+    fn test_simple() {
         let u_small: u8 = 17;
         let mut u_big: usize = 19;
         let mut u_reset: usize = 23;
@@ -390,7 +417,10 @@ pub mod static_future {
         assert_eq!(*run(fut_reset_t_mut), 0);
         assert_eq!(u_reset, 0);
         assert_eq!(run(fut_no_self), (&0, &31));
+    }
 
+    #[test]
+    fn test_scoped() {
         let mut hoo: String = "hoo".into();
         {
             let mut f = F(7);
@@ -405,6 +435,20 @@ pub mod static_future {
             f.0 = new_f;
             assert_eq!(f.0, 0);
         }
+    }
+
+    #[test]
+    fn test_indirect() {
+        let u = 17_u8;
+        let f = F(10);
+        let fut_u8_ref = O(1).add_u8_ref(&f, &u);
+        assert_eq!(run(fut_u8_ref), (u + 11) as usize);
+
+        let fut_u8_one = F(1).add_u8_one();
+        assert_eq!(run(fut_u8_one), 2);
+
+        let fut_add_u8 = F(2).add_u8_1_wrap();
+        assert_eq!(run(fut_add_u8), 3);
     }
 }
 
