@@ -457,95 +457,73 @@ pub mod static_future_dep {
     use crate::executor;
     use async_trait::{async_trait, static_future};
 
-    #[derive(Default)]
-    struct F(usize);
-
-    pub trait Dep<'l> {
-        fn create(y: &'l usize) -> Self;
-        fn inc_usize(&self, x: &'l mut usize) -> &'l mut usize;
-    }
-
-    struct DepDefault<'l> {
-        y: &'l usize,
-    }
-
-    impl<'l> Dep<'l> for DepDefault<'l> {
-        fn create(y: &'l usize) -> Self {
-            DepDefault { y }
-        }
-        fn inc_usize(&self, x: &'l mut usize) -> &'l mut usize {
-            (*x) += self.y;
-            x
-        }
-    }
-
     #[async_trait]
-    pub trait FastAsyncTrait {
-        type D<'l>: Dep<'l> + Send
-        where
-            Self: 'l;
-        type DI<'l>: Iterator<Item = Self::D<'l>> + Send
-        where
-            Self: 'l;
-
+    pub trait AsyncIter {
         #[static_future]
-        async fn get_dep<'l>(&'l self) -> Self::D<'l>;
-
-        #[static_future]
-        async fn call_dep<'d>(&'d self, d: Self::D<'d>, x: &mut usize) -> usize;
-
-        #[static_future]
-        async fn fake_iter<'i>(&'i self) -> Self::DI<'i>;
+        async fn next(&mut self) -> Option<usize>;
     }
-
-    #[async_trait]
-    impl FastAsyncTrait for F {
-        type D<'l> = DepDefault<'l>;
-        type DI<'l> = I<'l>;
-
-        #[static_future]
-        async fn get_dep<'l>(&'l self) -> Self::D<'l> {
-            Self::D::<'l>::create(&self.0)
-        }
-
-        #[static_future]
-        async fn call_dep<'d>(&'d self, d: Self::D<'d>, x: &mut usize) -> usize {
-            *d.inc_usize(x)
-        }
-
-        #[static_future]
-        async fn fake_iter<'i>(&'i self) -> Self::DI<'i> {
-            I { _y: self }
-        }
-    }
-
-    struct I<'l> {
-        _y: &'l F,
-    }
-
-    impl<'l> Iterator for I<'l> {
-        type Item = DepDefault<'l>;
-
-        fn next(&mut self) -> Option<Self::Item> {
-            None
-        }
-    }
-
-    #[async_trait]
-    pub trait AsyncTrait<F: FastAsyncTrait> {
-        async fn dep(&self, f: F) -> usize;
-    }
-
     struct A(usize);
-
     #[async_trait]
-    impl AsyncTrait<F> for A {
-        async fn dep(&self, f: F) -> usize {
-            let dep = f.get_dep().await;
-            let mut x = self.0;
-            f.call_dep(dep, &mut x).await
+    impl AsyncIter for A {
+        #[static_future]
+        async fn next(&mut self) -> Option<usize> {
+            if self.0 > 0 {
+                self.0 -= 1;
+                Some(self.0)
+            } else {
+                None
+            }
         }
     }
+
+    pub trait Trigger {
+        type Iter<'i>: AsyncIter + 'i
+        where
+            Self: 'i;
+        fn begin(&mut self) -> Self::Iter<'_>;
+    }
+    struct T(usize);
+    impl Trigger for T {
+        type Iter<'i> = A;
+        fn begin(&mut self) -> Self::Iter<'_> {
+            A(self.0)
+        }
+    }
+
+    #[async_trait]
+    pub trait Owner {
+        type Boom: Trigger;
+        async fn go(&mut self) -> Self::Boom;
+    }
+    struct O(usize);
+    #[async_trait]
+    impl Owner for O {
+        type Boom = T;
+        async fn go(&mut self) -> Self::Boom {
+            T(self.0)
+        }
+    }
+
+    struct W(O);
+    impl W {
+        async fn test(&mut self) -> Option<usize> {
+            let mut b = self.0.go().await;
+            let mut a = b.begin();
+            a.next().await
+        }
+    }
+
+    /* Issue: the lifetime of type O is bounded by `'i` in `Trigger` whereas
+     * the side-effect is contained within the `Future`.
+    struct Z<O: Owner>(O);
+    impl<O: Owner> Z<O> {
+        async fn test(&mut self) -> Option<usize> {
+            let mut b = self.0.go().await;
+            let mut a = b.begin();
+            a.next().await
+        }
+    }
+    */
 
     fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
         executor::block_on_simple(f)
@@ -553,18 +531,12 @@ pub mod static_future_dep {
 
     #[test]
     fn test() {
-        let f = F(10);
-        let fut_get_dep = f.get_dep();
-        let dep = run(fut_get_dep);
-        let mut x = 19;
-        let fut_res = f.call_dep(dep, &mut x);
-        let res = run(fut_res);
-        assert_eq!(res, 29);
-        let fut_iter = f.fake_iter();
-        let mut iter = run(fut_iter);
-        assert!(iter.next().is_none());
-        let fut_a = A(11).dep(F(7));
-        assert_eq!(executor::block_on_simple(fut_a), 18);
+        let mut w: W = W(O(1));
+        assert_eq!(run(w.test()), Some(0));
+        /*
+        let mut z: Z<O> = Z(O(1));
+        assert_eq!(run(z.test()), Some(0));
+        */
     }
 }
 
