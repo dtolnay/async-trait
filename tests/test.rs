@@ -7,6 +7,12 @@
         type_alias_impl_trait,
     )
 )]
+#![feature(
+    associated_type_bounds,
+    generic_associated_types,
+    min_specialization,
+    type_alias_impl_trait
+)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
@@ -565,6 +571,64 @@ pub mod static_future_dep {
         assert!(iter.next().is_none());
         let fut_a = A(11).dep(F(7));
         assert_eq!(executor::block_on_simple(fut_a), 18);
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future_pinned {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    struct F(*const usize, std::marker::PhantomPinned);
+    unsafe impl Send for F {}
+    unsafe impl Sync for F {}
+
+    pub struct G(*const usize, std::marker::PhantomPinned);
+    unsafe impl Send for G {}
+    unsafe impl Sync for G {}
+
+    #[async_trait]
+    pub trait FastAsyncTrait {
+        #[static_future]
+        async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize);
+    }
+
+    #[async_trait]
+    impl FastAsyncTrait for F {
+        #[static_future]
+        async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize) {
+            unsafe { (&*self.0, *g.0) }
+        }
+    }
+
+    #[async_trait]
+    pub trait AsyncTrait<F: FastAsyncTrait> {
+        async fn get(&self, f: F, g: &G) -> usize;
+    }
+
+    struct A;
+
+    #[async_trait]
+    impl AsyncTrait<F> for A {
+        async fn get(&self, f: F, g: &G) -> usize {
+            let g_copy = G(g.0, g.1);
+            *f.get_ref(g_copy).await.0
+        }
+    }
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    #[test]
+    fn test() {
+        let u: usize = 37;
+        let f = F(&u as *const usize, std::marker::PhantomPinned);
+        let fut_get_ref = f.get_ref(G(&u as *const usize, std::marker::PhantomPinned));
+        assert_eq!(run(fut_get_ref), (&37, 37));
+        let g = G(&u as *const usize, std::marker::PhantomPinned);
+        let fut_get = A.get(f, &g);
+        assert_eq!(run(fut_get), 37);
     }
 }
 

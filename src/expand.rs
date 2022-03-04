@@ -76,7 +76,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(
+                        let bounds = transform_sig(
                             context,
                             sig,
                             &ret,
@@ -86,7 +86,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             static_ret,
                         );
                         if static_ret {
-                            let type_def = define_implicit_associated_type(sig, &ret, is_local);
+                            let type_def = define_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_types.push(TraitItem::Type(type_def));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
@@ -128,9 +128,11 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, static_ret);
-                        transform_sig(context, sig, &ret, has_self, false, is_local, static_ret);
+                        let bounds = transform_sig(
+                            context, sig, &ret, has_self, false, is_local, static_ret,
+                        );
                         if static_ret {
-                            let type_assign = assign_implicit_associated_type(sig, &ret, is_local);
+                            let type_assign = assign_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
                         }
@@ -200,7 +202,7 @@ fn transform_sig(
     has_default: bool,
     is_local: bool,
     static_future: bool,
-) {
+) -> TokenStream {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let default_span = sig
@@ -360,6 +362,8 @@ fn transform_sig(
             >>
         };
     }
+
+    bounds
 }
 
 // Input:
@@ -493,28 +497,19 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 fn define_implicit_associated_type(
     sig: &Signature,
     ret: &TokenStream,
-    is_local: bool,
+    bounds: &TokenStream,
 ) -> TraitItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
         "Automatically generated return type placeholder for [`Self::{}`]",
         sig.ident
     );
-    let mut implicit_type_def: TraitItemType = if is_local {
-        parse_quote!(
-            #[allow(clippy::type_repetition_in_bounds)]
-            #[allow(non_camel_case_types)]
-            #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret> + 'async_trait;
-        )
-    } else {
-        parse_quote!(
-            #[allow(clippy::type_repetition_in_bounds)]
-            #[allow(non_camel_case_types)]
-            #[doc = #generated_doc]
-            type #implicit_type_name: ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
-        )
-    };
+    let mut implicit_type_def: TraitItemType = parse_quote!(
+        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(non_camel_case_types)]
+        #[doc = #generated_doc]
+        type #implicit_type_name: ::core::future::Future<Output = #ret> + #bounds;
+    );
     implicit_type_def.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_def.generics.where_clause)
@@ -538,26 +533,18 @@ fn define_implicit_associated_type(
 fn assign_implicit_associated_type(
     sig: &Signature,
     ret: &TokenStream,
-    is_local: bool,
+    bounds: &TokenStream,
 ) -> ImplItemType {
     let implicit_type_name = derive_implicit_type_name(&sig.ident);
     let generated_doc = format!(
         "Automatically generated return type for [`Self::{}`]",
         sig.ident
     );
-    let mut implicit_type_assign: ImplItemType = if is_local {
-        parse_quote!(
-            #[allow(clippy::type_repetition_in_bounds)]
-            #[doc = #generated_doc]
-            type #implicit_type_name = impl ::core::future::Future<Output = #ret> + 'async_trait;
-        )
-    } else {
-        parse_quote!(
-            #[allow(clippy::type_repetition_in_bounds)]
-            #[doc = #generated_doc]
-            type #implicit_type_name = impl ::core::future::Future<Output = #ret> + ::core::marker::Send + 'async_trait;
-        )
-    };
+    let mut implicit_type_assign: ImplItemType = parse_quote!(
+        #[allow(clippy::type_repetition_in_bounds)]
+        #[doc = #generated_doc]
+        type #implicit_type_name = impl ::core::future::Future<Output = #ret> + #bounds;
+    );
     implicit_type_assign.generics = sig.generics.clone();
     if let Some(receiver_lifetime) = receiver_lifetime(sig) {
         where_clause_or_default(&mut implicit_type_assign.generics.where_clause)
