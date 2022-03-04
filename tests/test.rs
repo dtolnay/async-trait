@@ -7,12 +7,6 @@
         type_alias_impl_trait,
     )
 )]
-#![feature(
-    associated_type_bounds,
-    generic_associated_types,
-    min_specialization,
-    type_alias_impl_trait
-)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
