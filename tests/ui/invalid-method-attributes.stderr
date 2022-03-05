@@ -1,0 +1,17 @@
+error: expected attribute arguments in parentheses: #[async_trait(...)]
+ --> tests/ui/invalid-method-attributes.rs:5:5
+  |
+5 |     #[async_trait]
+  |     ^^^^^^^^^^^^^^
+
+error: expected #[async_trait(?Send)]
+  --> tests/ui/invalid-method-attributes.rs:11:5
+   |
+11 |     #[async_trait(invalid)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected parentheses: #[async_trait(...)]
+  --> tests/ui/invalid-method-attributes.rs:17:5
+   |
+17 |     #[async_trait = "invalid"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

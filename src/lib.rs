@@ -149,7 +149,20 @@
 //! Not all async traits need futures that are `dyn Future + Send`. To avoid
 //! having Send and Sync bounds placed on the async trait methods, invoke the
 //! async trait macro as `#[async_trait(?Send)]` on both the trait and the impl
-//! blocks.
+//! blocks, or add `#[async_trait(?Send)]` to individual methods if you don't
+//! want to remove the `Send` bounds from all the trait methods:
+//!
+//! ```
+//! use async_trait::async_trait;
+//!
+//! #[async_trait]
+//! trait MyAsyncTrait {
+//!     #[async_trait(?Send)]
+//!     async fn non_send_future();
+//!
+//!     async fn send_future();
+//! }
+//! ```
 //!
 //! <br>
 //!
@@ -333,6 +346,11 @@ use syn::parse_macro_input;
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item, args.local);
-    TokenStream::from(quote!(#item))
+    let expand_result = expand(&mut item, args.local);
+
+    let mut output = TokenStream::from(quote!(#item));
+    if let Err(e) = expand_result {
+        output.extend(vec![proc_macro::TokenStream::from(e.to_compile_error())]);
+    }
+    output
 }

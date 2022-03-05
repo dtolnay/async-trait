@@ -1,15 +1,18 @@
+use crate::args::Args;
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
+use syn::parse::{Parse, ParseBuffer};
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
-    ImplItem, Lifetime, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token, TraitItem,
-    Type, TypeParamBound, TypePath, WhereClause,
+    parse_quote, parse_quote_spanned, Attribute, Block, Error, FnArg, GenericParam, Generics,
+    Ident, ImplItem, Lifetime, Pat, PatIdent, Path, Receiver, Result, ReturnType, Signature, Stmt,
+    Token, TraitItem, Type, TypeParamBound, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -51,7 +54,32 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool) {
+struct Errors(Option<Error>);
+
+impl Errors {
+    pub fn append(&mut self, error: Error) {
+        match &mut self.0 {
+            Some(e) => {
+                e.combine(error);
+            }
+            None => self.0 = Some(error),
+        }
+    }
+}
+
+impl Extend<Error> for Errors {
+    fn extend<T: IntoIterator<Item = Error>>(&mut self, iter: T) {
+        let mut iter = iter.into_iter();
+        if let Some(mut e) = self.0.take().or_else(|| iter.next()) {
+            e.extend(iter);
+            self.0 = Some(e);
+        }
+    }
+}
+
+pub fn expand(input: &mut Item, is_local: bool) -> Result<()> {
+    let mut errors = Errors(None);
+
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -64,6 +92,12 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
+                        let method_args = validate_method_attrs(
+                            is_local,
+                            &mut errors,
+                            &extract_method_attrs(&mut method.attrs),
+                        );
+                        let method_is_local = method_args.map_or(is_local, |args| args.local);
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
@@ -73,7 +107,11 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        transform_sig(context, sig, has_self, has_default, method_is_local);
+                    } else if let Err(err) =
+                        check_attr_not_allowed(&extract_method_attrs(&mut method.attrs))
+                    {
+                        errors.append(err);
                     }
                 }
             }
@@ -105,14 +143,87 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
+                        let method_args = validate_method_attrs(
+                            is_local,
+                            &mut errors,
+                            &extract_method_attrs(&mut method.attrs),
+                        );
+                        let method_is_local = method_args.map_or(is_local, |args| args.local);
                         transform_block(context, sig, block);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_sig(context, sig, has_self, false, method_is_local);
                         method.attrs.push(lint_suppress_with_body());
+                    } else if let Err(err) =
+                        check_attr_not_allowed(&extract_method_attrs(&mut method.attrs))
+                    {
+                        errors.append(err);
                     }
                 }
             }
         }
     }
+
+    match errors.0 {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+// Remove and return all #[async_trait] attributes in the vector
+fn extract_method_attrs(attrs: &mut Vec<Attribute>) -> Vec<Attribute> {
+    let async_trait_attr_path: Path = parse_quote!(async_trait);
+    let mut out = Vec::new();
+    attrs.retain(|attr| {
+        if attr.path == async_trait_attr_path {
+            out.push(attr.clone());
+            false
+        } else {
+            true
+        }
+    });
+    out
+}
+
+fn check_attr_not_allowed(attrs: &[Attribute]) -> Result<()> {
+    match attrs.first() {
+        Some(attr) => Err(Error::new(
+            attr.span(),
+            "#[async_trait] is not allowed in sync methods",
+        )),
+        None => Ok(()),
+    }
+}
+
+fn validate_method_attrs(
+    trait_is_local: bool,
+    errors: &mut Errors,
+    attrs: &[Attribute],
+) -> Option<Args> {
+    // Only try to parse first attr and mark the rest as duplicates
+    attrs.split_first().and_then(|(attr, rest)| {
+        errors.extend(
+            rest.iter()
+                .map(|attr| Error::new(attr.span(), "duplicate #[async_trait] in method")),
+        );
+
+        let parser = |input: &ParseBuffer| {
+            Args::parse(input)
+                .map_err(|_| Error::new(attr.span(), "expected #[async_trait(?Send)]"))
+        };
+        match attr.parse_args_with(parser) {
+            Ok(method_args) if method_args.local == trait_is_local => {
+                errors.append(Error::new(
+                    attr.span(),
+                    "redundant #[async_trait(?Send)] in method",
+                ));
+                None
+            }
+            Ok(method_args) => Some(method_args),
+            Err(e) => {
+                errors.append(Error::new(attr.span(), e));
+                None
+            }
+        }
+    })
 }
 
 fn lint_suppress_with_body() -> Attribute {
@@ -385,7 +496,6 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
-    use syn::spanned::Spanned;
     format_ident!("__arg{}", i, span = pat.span())
 }
 

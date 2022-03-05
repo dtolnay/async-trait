@@ -1,0 +1,5 @@
+error: duplicate #[async_trait] in method
+ --> tests/ui/duplicate-method-attributes.rs:6:5
+  |
+6 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^

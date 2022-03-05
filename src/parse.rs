@@ -28,7 +28,11 @@ impl Parse for Item {
             item.attrs = attrs;
             Ok(Item::Impl(item))
         } else {
-            Err(lookahead.error())
+            Err(Error::new(
+                Span::call_site(),
+                format!("invalid item for #[async_trait]: {}.\nDid you forget #[async_trait] on the outer trait or impl block?",
+                        lookahead.error()),
+            ))
         }
     }
 }

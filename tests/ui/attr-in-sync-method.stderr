@@ -1,0 +1,5 @@
+error: #[async_trait] is not allowed in sync methods
+ --> tests/ui/attr-in-sync-method.rs:5:5
+  |
+5 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^

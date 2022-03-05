@@ -1,0 +1,13 @@
+error[E0053]: method `method` has an incompatible type for trait
+  --> tests/ui/missing-send-attr-in-trait.rs:13:5
+   |
+13 |     async fn method() {}
+   |     ^^^^^^^^^^^^^^^^^ expected trait `Future<Output = ()> + Send`, found trait `Future<Output = ()>`
+   |
+note: type in trait
+  --> tests/ui/missing-send-attr-in-trait.rs:5:5
+   |
+5  |     async fn method();
+   |     ^^^^^^^^^^^^^^^^^^
+   = note: expected fn pointer `fn() -> Pin<Box<(dyn Future<Output = ()> + Send + 'async_trait)>>`
+              found fn pointer `fn() -> Pin<Box<(dyn Future<Output = ()> + 'async_trait)>>`

@@ -1,0 +1,11 @@
+error: redundant #[async_trait(?Send)] in method
+ --> tests/ui/redundant-send.rs:5:5
+  |
+5 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant #[async_trait(?Send)] in method
+  --> tests/ui/redundant-send.rs:13:5
+   |
+13 |     #[async_trait(?Send)]
+   |     ^^^^^^^^^^^^^^^^^^^^^

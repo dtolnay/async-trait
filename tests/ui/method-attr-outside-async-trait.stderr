@@ -1,0 +1,8 @@
+error: invalid item for #[async_trait]: expected one of: `unsafe`, `pub`, `trait`, `impl`.
+       Did you forget #[async_trait] on the outer trait or impl block?
+ --> tests/ui/method-attr-outside-async-trait.rs:4:5
+  |
+4 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `async_trait` (in Nightly builds, run with -Z macro-backtrace for more info)

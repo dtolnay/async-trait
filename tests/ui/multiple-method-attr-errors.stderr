@@ -1,0 +1,23 @@
+error: duplicate #[async_trait] in method
+ --> tests/ui/multiple-method-attr-errors.rs:6:5
+  |
+6 |     #[async_trait]
+  |     ^^^^^^^^^^^^^^
+
+error: duplicate #[async_trait] in method
+ --> tests/ui/multiple-method-attr-errors.rs:7:5
+  |
+7 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant #[async_trait(?Send)] in method
+ --> tests/ui/multiple-method-attr-errors.rs:5:5
+  |
+5 |     #[async_trait(?Send)]
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: duplicate #[async_trait] in method
+  --> tests/ui/multiple-method-attr-errors.rs:14:5
+   |
+14 |     #[async_trait(?Send)]
+   |     ^^^^^^^^^^^^^^^^^^^^^

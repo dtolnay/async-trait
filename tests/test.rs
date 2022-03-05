@@ -149,6 +149,20 @@ pub async fn test_object_no_send() {
 }
 
 #[async_trait]
+pub trait NoSendMethod {
+    #[async_trait(?Send)]
+    async fn test_method_no_send();
+    async fn test_method_no_attrs();
+}
+
+#[async_trait]
+impl NoSendMethod for () {
+    #[async_trait(?Send)]
+    async fn test_method_no_send() {}
+    async fn test_method_no_attrs() {}
+}
+
+#[async_trait]
 pub unsafe trait UnsafeTrait {}
 
 #[async_trait]
