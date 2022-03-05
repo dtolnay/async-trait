@@ -513,8 +513,8 @@ pub mod static_future_dep {
         }
     }
 
-    /* Issue: the lifetime of type O is bounded by `'i` in `Trigger` whereas
-     * the side-effect is contained within the `Future`.
+    /* Since `O` is now generic, the compiler cannot determine whether
+     * `self.0.go()` borrows `self` or not, thus emitting a compile error.
     struct Z<O: Owner>(O);
     impl<O: Owner> Z<O> {
         async fn test(&mut self) -> Option<usize> {
@@ -533,7 +533,7 @@ pub mod static_future_dep {
     fn test() {
         let mut w: W = W(O(1));
         assert_eq!(run(w.test()), Some(0));
-        /*
+        /* compile_fail.
         let mut z: Z<O> = Z(O(1));
         assert_eq!(run(z.test()), Some(0));
         */
