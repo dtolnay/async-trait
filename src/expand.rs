@@ -187,7 +187,7 @@ fn lint_suppress_without_body() -> Attribute {
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
-//     ) -> Self::RetType_f<'life0, 'life1, 'async_trait>
+//     ) -> Self::RetTypeOfF<'life0, 'life1, 'async_trait>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -488,7 +488,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetType_f<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -506,7 +506,6 @@ fn define_implicit_associated_type(
     );
     let mut implicit_type_def: TraitItemType = parse_quote!(
         #[allow(clippy::type_repetition_in_bounds)]
-        #[allow(non_camel_case_types)]
         #[doc = #generated_doc]
         type #implicit_type_name: ::core::future::Future<Output = #ret> + #bounds;
     );
@@ -523,7 +522,7 @@ fn define_implicit_associated_type(
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
 // Output:
-//     type RetType_f<'life0, 'life1, 'async_trait, T>
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
@@ -562,7 +561,7 @@ fn assign_implicit_associated_type(
 //     /// Doc.
 //     ///
 //     /// ***
-//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetType_f)._
+//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
 //     async fn f<T>(&self, x: &T) -> Ret;
 fn generate_fn_doc(sig: &Signature, ret: &TokenStream, attrs: &mut Vec<Attribute>) {
     let newline = quote! {
@@ -664,7 +663,23 @@ fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause
 }
 
 fn derive_implicit_type_name(id: &Ident) -> Ident {
-    format_ident!("RetType_{}", id.to_string())
+    let mut to_upper = true;
+    let upper_camel_case_id: String = id
+        .to_string()
+        .chars()
+        .filter_map(|c| {
+            if c == '_' {
+                to_upper = true;
+                None
+            } else if to_upper {
+                to_upper = false;
+                c.to_uppercase().next()
+            } else {
+                Some(c)
+            }
+        })
+        .collect();
+    format_ident!("RetTypeOf{}", upper_camel_case_id)
 }
 
 fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {

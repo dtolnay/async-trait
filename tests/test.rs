@@ -598,6 +598,39 @@ pub mod static_future_pinned {
     }
 }
 
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future_nosend {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    struct F(*mut usize);
+
+    #[async_trait(?Send)]
+    pub trait FastAsyncTrait {
+        #[static_future]
+        async fn add<'s>(&'s mut self, a: usize);
+    }
+
+    #[async_trait(?Send)]
+    impl FastAsyncTrait for F {
+        #[static_future]
+        async fn add<'s>(&'s mut self, a: usize) {
+            unsafe {
+                (*self.0) += a;
+            }
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut a: usize = 11;
+        let mut f = F(&mut a as *mut usize);
+        let fut_add = f.add(3);
+        executor::block_on_simple(fut_add);
+        assert_eq!(unsafe { *f.0 }, 14);
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
