@@ -5,6 +5,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
@@ -186,18 +187,30 @@ fn transform_sig(
     {
         match param {
             GenericParam::Type(param) => {
+                let span = if param.bounds.is_empty() {
+                    // This should use `Span::def_site()`, but that's not stable.
+                    param.ident.span()
+                } else {
+                    param.bounds.span()
+                };
                 let param = &param.ident;
-                let span = param.span();
+                let life = quote_spanned!(span=> : 'async_trait);
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
+                    .push(parse_quote!(#param #life));
             }
             GenericParam::Lifetime(param) => {
+                let span = if param.bounds.is_empty() {
+                    // This should use `Span::def_site()`, but that's not stable.
+                    param.lifetime.span()
+                } else {
+                    param.bounds.span()
+                };
                 let param = &param.lifetime;
-                let span = param.span();
+                let life = quote_spanned!(span=> : 'async_trait);
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
+                    .push(parse_quote!(#param #life));
             }
             GenericParam::Const(_) => {}
         }
@@ -385,7 +398,6 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
-    use syn::spanned::Spanned;
     format_ident!("__arg{}", i, span = pat.span())
 }
 

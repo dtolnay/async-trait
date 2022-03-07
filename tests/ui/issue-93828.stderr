@@ -1,0 +1,39 @@
+error: future cannot be sent between threads safely
+  --> tests/ui/issue-93828.rs:15:59
+   |
+15 |       async fn publish<T: IntoUrl>(&self, url: T) -> String {
+   |  ___________________________________________________________^
+16 | |         "Foo".to_string()
+17 | |     }
+   | |_____^ future created by async block is not `Send`
+   |
+note: captured value is not `Send`
+  --> tests/ui/issue-93828.rs:15:41
+   |
+15 |     async fn publish<T: IntoUrl>(&self, url: T) -> String {
+   |                                         ^^^ has type `T` which is not `Send`
+   = note: required for the cast to the object type `dyn Future<Output = String> + Send`
+help: consider further restricting this bound
+   |
+15 |     async fn publish<T: IntoUrl + std::marker::Send>(&self, url: T) -> String {
+   |                                 +++++++++++++++++++
+
+error: future cannot be sent between threads safely
+  --> tests/ui/issue-93828.rs:26:50
+   |
+26 |       async fn publish<T>(&self, url: T) -> String {
+   |  __________________________________________________^
+27 | |         "Foo".to_string()
+28 | |     }
+   | |_____^ future created by async block is not `Send`
+   |
+note: captured value is not `Send`
+  --> tests/ui/issue-93828.rs:26:32
+   |
+26 |     async fn publish<T>(&self, url: T) -> String {
+   |                                ^^^ has type `T` which is not `Send`
+   = note: required for the cast to the object type `dyn Future<Output = String> + Send`
+help: consider further restricting this bound
+   |
+26 |     async fn publish<T + std::marker::Send>(&self, url: T) -> String {
+   |                        +++++++++++++++++++
