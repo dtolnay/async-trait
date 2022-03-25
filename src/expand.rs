@@ -4,6 +4,7 @@ use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
+use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
@@ -179,21 +180,29 @@ fn transform_sig(
         }
     }
 
-    for param in &sig.generics.params {
+    for param in &mut sig.generics.params {
         match param {
             GenericParam::Type(param) => {
-                let param = &param.ident;
-                let span = param.span();
+                let param_name = &param.ident;
+                let span = match param.colon_token.take() {
+                    Some(colon_token) => colon_token.span,
+                    None => param_name.span(),
+                };
+                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
+                    .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
             }
             GenericParam::Lifetime(param) => {
-                let param = &param.lifetime;
-                let span = param.span();
+                let param_name = &param.lifetime;
+                let span = match param.colon_token.take() {
+                    Some(colon_token) => colon_token.span,
+                    None => param_name.span(),
+                };
+                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait));
+                    .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
             }
             GenericParam::Const(_) => {}
         }
