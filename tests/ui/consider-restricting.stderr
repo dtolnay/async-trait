@@ -12,8 +12,8 @@ note: captured value is not `Send`
    = note: required for the cast to the object type `dyn Future<Output = ()> + Send`
 help: consider further restricting this bound
    |
-16 |     async fn publish<T + std::marker::Send: IntoUrl>(&self, url: T) {}
-   |                        +++++++++++++++++++
+16 |     async fn publish<T: IntoUrl + std::marker::Send>(&self, url: T) {}
+   |                                 +++++++++++++++++++
 
 error: future cannot be sent between threads safely
   --> tests/ui/consider-restricting.rs:23:40
