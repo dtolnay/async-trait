@@ -9,8 +9,8 @@ use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
-    ImplItem, Lifetime, LifetimeDef, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token,
-    TraitItem, TraitItemType, Type, TypeParamBound, TypePath, WhereClause,
+    ImplItem, ImplItemType, Lifetime, LifetimeDef, Pat, PatIdent, Receiver, ReturnType, Signature,
+    Stmt, Token, TraitItem, TraitItemType, Type, TypeParamBound, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
