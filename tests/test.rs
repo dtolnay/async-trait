@@ -1,6 +1,11 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(min_specialization, type_alias_impl_trait)
+    feature(
+        associated_type_bounds,
+        generic_associated_types,
+        min_specialization,
+        type_alias_impl_trait,
+    )
 )]
 #![allow(
     clippy::let_underscore_drop,
@@ -230,6 +235,399 @@ pub async fn test_unimplemented() {
         async fn f() {
             unimplemented!()
         }
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future {
+    use std::usize;
+
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    #[derive(Default)]
+    pub struct F(usize);
+
+    #[derive(Default)]
+    pub struct O(usize);
+
+    #[async_trait]
+    pub trait FastAsyncTrait {
+        /// Converts `u8` into `usize`.
+        ///
+        /// # Errors
+        ///
+        /// None.
+        ///
+        /// # Panics
+        ///
+        /// None.
+        #[async_trait::static_future]
+        async fn add_u8(&self, u: u8) -> usize;
+
+        async fn add_u8_1_wrap(&self) -> usize;
+
+        /// Adds `self.0` and the given `usize`.
+        ///
+        /// # Errors
+        ///
+        /// None.
+        ///
+        /// # Panics
+        ///
+        /// None.
+        #[static_future]
+        async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
+
+        #[static_future]
+        async fn sum_array(&self, u: &[u8]) -> usize;
+
+        #[static_future]
+        async fn get_len(&mut self, s: &str) -> usize;
+
+        #[static_future]
+        async fn sum_len(&mut self, s1: &str, s2: &str) -> usize;
+
+        #[static_future]
+        async fn get_usize_ref<'s>(&'s self) -> &'s usize;
+
+        #[static_future]
+        async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T);
+
+        #[static_future]
+        async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T;
+
+        #[static_future]
+        async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
+            t_mut: &'t mut T,
+            y_ref: &'y Y,
+        ) -> (&'t T, &'y Y);
+    }
+
+    #[async_trait]
+    impl FastAsyncTrait for F {
+        /// It implements [`FastAsyncTrait::add_u8`].
+        #[static_future]
+        async fn add_u8(&self, u: u8) -> usize {
+            self.0 + (u as usize)
+        }
+
+        async fn add_u8_1_wrap(&self) -> usize {
+            self.add_u8(1).await
+        }
+
+        #[static_future]
+        async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
+            (*u) += self.0;
+            (u, self.0)
+        }
+
+        /// It implements [`FastAsyncTrait::sum_array`].
+        #[static_future]
+        async fn sum_array(&self, u: &[u8]) -> usize {
+            u.iter().sum::<u8>() as usize
+        }
+
+        #[static_future]
+        async fn get_len(&mut self, s: &str) -> usize {
+            self.0 = s.len();
+            self.0
+        }
+
+        #[static_future]
+        async fn sum_len(&mut self, s1: &str, s2: &str) -> usize {
+            let len1 = self.get_len(s1).await;
+            let len2 = self.get_len(s2).await;
+            self.0 = len1 + len2;
+            self.0
+        }
+
+        #[static_future]
+        async fn get_usize_ref<'s>(&'s self) -> &'s usize {
+            &self.0
+        }
+
+        #[static_future]
+        async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T) {
+            (self.0, t)
+        }
+
+        #[static_future]
+        async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T {
+            *t = T::default();
+            t
+        }
+
+        #[static_future]
+        async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
+            t_mut: &'t mut T,
+            y_ref: &'y Y,
+        ) -> (&'t T, &'y Y) {
+            *t_mut = T::default();
+            (t_mut, y_ref)
+        }
+    }
+
+    impl F {
+        async fn add_u8_one(&self) -> usize {
+            self.add_u8(1).await
+        }
+    }
+
+    #[async_trait]
+    pub trait ChildTrait {
+        async fn add_u8_ref(&self, f: &F, u: &u8) -> usize;
+    }
+
+    #[async_trait]
+    impl ChildTrait for O {
+        async fn add_u8_ref(&self, f: &F, u: &u8) -> usize {
+            F(f.0 + self.0).add_u8(*u).await
+        }
+    }
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    #[test]
+    fn test_simple() {
+        let u_small: u8 = 17;
+        let mut u_big: usize = 19;
+        let mut u_reset: usize = 23;
+        let u_array = [1_u8, 2_u8, 1_u8, 3_u8];
+        let (str1, str2) = ("Hello".to_owned(), "Hi".to_owned());
+        let mut i_reset: isize = 29;
+        let i_med: i8 = 31;
+        let mut f_0 = F(0);
+        let fut_sum_len = f_0.sum_len(&str1, &str2);
+        let fut_add_u8 = F(1).add_u8(u_small);
+        let fut_add_usize_mut = F(2).add_usize_mut(&mut u_big);
+        let fut_sum_array = F(3).sum_array(&u_array);
+        let fut_get_usize_ref = F(4).get_usize_ref();
+        let fut_ret_pair = F(5).clone_ret_pair(2_usize);
+        let fut_reset_t_mut = F(6).reset_t_mut(&mut u_reset);
+        let fut_no_self = F::no_self(&mut i_reset, &i_med);
+        assert_eq!(run(fut_sum_len), 7);
+        assert_eq!(run(fut_add_u8), (u_small + 1) as usize);
+        assert_eq!(run(fut_add_usize_mut), (&mut 21, 2));
+        assert_eq!(run(fut_sum_array), 7);
+        assert_eq!(*run(fut_get_usize_ref), 4);
+        assert_eq!(run(fut_ret_pair), (5, 2));
+        assert_eq!(*run(fut_reset_t_mut), 0);
+        assert_eq!(u_reset, 0);
+        assert_eq!(run(fut_no_self), (&0, &31));
+    }
+
+    #[test]
+    fn test_scoped() {
+        let mut hoo: String = "hoo".into();
+        {
+            let mut f = F(7);
+            let new_f = {
+                let mut hi: String = "hi".into();
+                let fut_reset_t_mut_1 = f.reset_t_mut(&mut hi);
+                let len1 = executor::block_on_simple(fut_reset_t_mut_1).len();
+                let fut_reset_t_mut_2 = f.reset_t_mut(&mut hoo);
+                let len2 = executor::block_on_simple(fut_reset_t_mut_2).len();
+                len1 + len2
+            };
+            f.0 = new_f;
+            assert_eq!(f.0, 0);
+        }
+    }
+
+    #[test]
+    fn test_indirect() {
+        let u = 17_u8;
+        let f = F(10);
+        let fut_u8_ref = O(1).add_u8_ref(&f, &u);
+        assert_eq!(run(fut_u8_ref), (u + 11) as usize);
+
+        let fut_u8_one = F(1).add_u8_one();
+        assert_eq!(run(fut_u8_one), 2);
+
+        let fut_add_u8 = F(2).add_u8_1_wrap();
+        assert_eq!(run(fut_add_u8), 3);
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future_dep {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    #[async_trait]
+    pub trait AsyncIter {
+        #[static_future]
+        async fn next(&mut self) -> Option<usize>;
+    }
+    struct A(usize);
+    #[async_trait]
+    impl AsyncIter for A {
+        #[static_future]
+        async fn next(&mut self) -> Option<usize> {
+            if self.0 > 0 {
+                self.0 -= 1;
+                Some(self.0)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub trait Trigger {
+        type Iter<'i>: AsyncIter + 'i
+        where
+            Self: 'i;
+        fn begin(&mut self) -> Self::Iter<'_>;
+    }
+    struct T(usize);
+    impl Trigger for T {
+        type Iter<'i> = A;
+        fn begin(&mut self) -> Self::Iter<'_> {
+            A(self.0)
+        }
+    }
+
+    #[async_trait]
+    pub trait Owner {
+        type Boom: Trigger;
+        async fn go(&mut self) -> Self::Boom;
+    }
+    struct O(usize);
+    #[async_trait]
+    impl Owner for O {
+        type Boom = T;
+        async fn go(&mut self) -> Self::Boom {
+            T(self.0)
+        }
+    }
+
+    struct W(O);
+    impl W {
+        async fn test(&mut self) -> Option<usize> {
+            let mut b = self.0.go().await;
+            let mut a = b.begin();
+            a.next().await
+        }
+    }
+
+    /* Since `O` is now generic, the compiler cannot determine whether
+     * `self.0.go()` borrows `self` or not, thus emitting a compile error.
+    struct Z<O: Owner>(O);
+    impl<O: Owner> Z<O> {
+        async fn test(&mut self) -> Option<usize> {
+            let mut b = self.0.go().await;
+            let mut a = b.begin();
+            a.next().await
+        }
+    }
+    */
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    #[test]
+    fn test() {
+        let mut w: W = W(O(1));
+        assert_eq!(run(w.test()), Some(0));
+        /* compile_fail.
+        let mut z: Z<O> = Z(O(1));
+        assert_eq!(run(z.test()), Some(0));
+        */
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future_pinned {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    struct F(*const usize, std::marker::PhantomPinned);
+    unsafe impl Send for F {}
+    unsafe impl Sync for F {}
+
+    pub struct G(*const usize, std::marker::PhantomPinned);
+    unsafe impl Send for G {}
+    unsafe impl Sync for G {}
+
+    #[async_trait]
+    pub trait FastAsyncTrait {
+        #[static_future]
+        async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize);
+    }
+
+    #[async_trait]
+    impl FastAsyncTrait for F {
+        #[static_future]
+        async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize) {
+            unsafe { (&*self.0, *g.0) }
+        }
+    }
+
+    #[async_trait]
+    pub trait AsyncTrait<F: FastAsyncTrait> {
+        async fn get(&self, f: F, g: &G) -> usize;
+    }
+
+    struct A;
+
+    #[async_trait]
+    impl AsyncTrait<F> for A {
+        async fn get(&self, f: F, g: &G) -> usize {
+            let g_copy = G(g.0, g.1);
+            *f.get_ref(g_copy).await.0
+        }
+    }
+
+    fn run<R, F: std::future::Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    #[test]
+    fn test() {
+        let u: usize = 37;
+        let f = F(&u as *const usize, std::marker::PhantomPinned);
+        let fut_get_ref = f.get_ref(G(&u as *const usize, std::marker::PhantomPinned));
+        assert_eq!(run(fut_get_ref), (&37, 37));
+        let g = G(&u as *const usize, std::marker::PhantomPinned);
+        let fut_get = A.get(f, &g);
+        assert_eq!(run(fut_get), 37);
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod static_future_nosend {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+
+    struct F(*mut usize);
+
+    #[async_trait(?Send)]
+    pub trait FastAsyncTrait {
+        #[static_future]
+        async fn add<'s>(&'s mut self, a: usize);
+    }
+
+    #[async_trait(?Send)]
+    impl FastAsyncTrait for F {
+        #[static_future]
+        async fn add<'s>(&'s mut self, a: usize) {
+            unsafe {
+                (*self.0) += a;
+            }
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut a: usize = 11;
+        let mut f = F(&mut a as *mut usize);
+        let fut_add = f.add(3);
+        executor::block_on_simple(fut_add);
+        assert_eq!(unsafe { *f.0 }, 14);
     }
 }
 

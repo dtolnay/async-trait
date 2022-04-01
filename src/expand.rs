@@ -10,7 +10,7 @@ use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
     ImplItem, Lifetime, LifetimeDef, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token,
-    TraitItem, Type, TypeParamBound, TypePath, WhereClause,
+    TraitItem, TraitItemType, Type, TypeParamBound, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -56,6 +56,7 @@ type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 pub fn expand(input: &mut Item, is_local: bool) {
     match input {
         Item::Trait(input) => {
+            let mut implicit_associated_types: Vec<TraitItem> = Vec::new();
             let context = Context::Trait {
                 generics: &input.generics,
                 supertraits: &input.supertraits,
@@ -64,21 +65,39 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
+                        let static_ret = contains_static_future_attr(&method.attrs);
+                        let ret = ret_token_stream(&sig.output);
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block);
+                            transform_block(context, sig, block, static_ret);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        let bounds = transform_sig(
+                            context,
+                            sig,
+                            &ret,
+                            has_self,
+                            has_default,
+                            is_local,
+                            static_ret,
+                        );
+                        if static_ret {
+                            let type_def = define_implicit_associated_type(sig, &ret, &bounds);
+                            implicit_associated_types.push(TraitItem::Type(type_def));
+                            generate_fn_doc(sig, &ret, &mut method.attrs);
+                        }
                     }
                 }
             }
+            implicit_associated_types
+                .into_iter()
+                .for_each(|t| input.items.push(t));
         }
         Item::Impl(input) => {
             let mut lifetimes = CollectLifetimes::new("'impl", input.impl_token.span);
@@ -97,6 +116,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 }
             }
 
+            let mut implicit_associated_type_assigns: Vec<ImplItem> = Vec::new();
             let context = Context::Impl {
                 impl_generics: &input.generics,
                 associated_type_impl_traits: &associated_type_impl_traits,
@@ -105,14 +125,26 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
+                        let static_ret = contains_static_future_attr(&method.attrs);
+                        let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_block(context, sig, block, static_ret);
+                        let bounds = transform_sig(
+                            context, sig, &ret, has_self, false, is_local, static_ret,
+                        );
+                        if static_ret {
+                            let type_assign = assign_implicit_associated_type(sig, &ret, &bounds);
+                            implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
+                            generate_fn_doc(sig, &ret, &mut method.attrs);
+                        }
                         method.attrs.push(lint_suppress_with_body());
                     }
                 }
             }
+            implicit_associated_type_assigns
+                .into_iter()
+                .for_each(|t| input.items.push(t));
         }
     }
 }
@@ -142,7 +174,7 @@ fn lint_suppress_without_body() -> Attribute {
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
-// Output:
+// Output (static_future == false):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -152,19 +184,28 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
+//
+// Output (static_future == true):
+//     fn f<'life0, 'life1, 'async_trait, T>(
+//         &'life0 self,
+//         x: &'life1 T,
+//     ) -> Self::RetTypeOfF<'life0, 'life1, 'async_trait>
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: 'async_trait;
+#[allow(clippy::fn_params_excessive_bools)]
 fn transform_sig(
     context: Context,
     sig: &mut Signature,
+    ret: &TokenStream,
     has_self: bool,
     has_default: bool,
     is_local: bool,
-) {
+    static_future: bool,
+) -> TokenStream {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
-
-    let ret = match &sig.output {
-        ReturnType::Default => quote!(()),
-        ReturnType::Type(_, ret) => quote!(#ret),
-    };
 
     let default_span = sig
         .ident
@@ -176,7 +217,20 @@ fn transform_sig(
     for arg in sig.inputs.iter_mut() {
         match arg {
             FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
-            FnArg::Typed(arg) => lifetimes.visit_type_mut(&mut arg.ty),
+            FnArg::Typed(arg) => {
+                lifetimes.visit_type_mut(&mut arg.ty);
+                if static_future {
+                    if let Type::Reference(ref_ty) = &*arg.ty {
+                        if let Some(lifetime) = ref_ty.lifetime.as_ref() {
+                            let span = lifetime.span();
+                            let ty = &*ref_ty.elem;
+                            where_clause_or_default(&mut sig.generics.where_clause)
+                                .predicates
+                                .push(parse_quote_spanned!(span=> #ty: #lifetime));
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -293,11 +347,36 @@ fn transform_sig(
     } else {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
-    sig.output = parse_quote_spanned! {ret_span=>
-        -> ::core::pin::Pin<Box<
-            dyn ::core::future::Future<Output = #ret> + #bounds
-        >>
-    };
+
+    if static_future {
+        let implicit_type_name = derive_implicit_type_name(&sig.ident);
+        let params_clone = sig.generics.params.clone();
+        let params_iter = params_clone.into_iter().map(|mut p| {
+            match &mut p {
+                GenericParam::Type(t) => {
+                    t.attrs.clear();
+                    t.bounds.clear();
+                }
+                GenericParam::Lifetime(l) => {
+                    l.attrs.clear();
+                    l.bounds.clear();
+                }
+                GenericParam::Const(_) => (),
+            };
+            p
+        });
+        sig.output = parse_quote_spanned! {ret_span=>
+            -> Self::#implicit_type_name<#(#params_iter),*>
+        };
+    } else {
+        sig.output = parse_quote_spanned! {ret_span=>
+            -> ::core::pin::Pin<Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        };
+    }
+
+    bounds
 }
 
 // Input:
@@ -305,7 +384,7 @@ fn transform_sig(
 //         self + x + a + b
 //     }
 //
-// Output:
+// Output (static_future == false):
 //     Box::pin(async move {
 //         let ___ret: Ret = {
 //             let __self = self;
@@ -317,7 +396,20 @@ fn transform_sig(
 //
 //         ___ret
 //     })
-fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
+//
+// Output (static_future == true):
+//     async move {
+//         let __ret: Ret = {
+//             let __self = self;
+//             let x = x;
+//             let (a, b) = __arg1;
+//
+//             __self + x + a + b
+//         };
+//
+//         __ret
+//     }
+fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, static_future: bool) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
@@ -391,10 +483,117 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
             }
         }
     };
-    let box_pin = quote_spanned!(block.brace_token.span=>
-        Box::pin(async move { #let_ret })
+
+    if static_future {
+        let async_block = quote_spanned!(block.brace_token.span=>
+            async move { #let_ret }
+        );
+        block.stmts = parse_quote!(#async_block);
+    } else {
+        let box_pin = quote_spanned!(block.brace_token.span=>
+            Box::pin(async move { #let_ret })
+        );
+        block.stmts = parse_quote!(#box_pin);
+    }
+}
+
+// Input:
+//     async fn f<T>(&self, x: &T) -> Ret;
+//
+// Output:
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>: Future<Output = Ret> + Send + 'async_trait
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: 'life0;
+fn define_implicit_associated_type(
+    sig: &Signature,
+    ret: &TokenStream,
+    bounds: &TokenStream,
+) -> TraitItemType {
+    let implicit_type_name = derive_implicit_type_name(&sig.ident);
+    let generated_doc = format!(
+        "Automatically generated return type placeholder for [`Self::{}`]",
+        sig.ident
     );
-    block.stmts = parse_quote!(#box_pin);
+    let mut implicit_type_def: TraitItemType = parse_quote!(
+        #[allow(clippy::type_repetition_in_bounds)]
+        #[doc = #generated_doc]
+        type #implicit_type_name: ::core::future::Future<Output = #ret> + #bounds;
+    );
+    implicit_type_def.generics = sig.generics.clone();
+    if let Some(receiver_lifetime) = receiver_lifetime(sig) {
+        where_clause_or_default(&mut implicit_type_def.generics.where_clause)
+            .predicates
+            .push(parse_quote!(Self: #receiver_lifetime));
+    }
+    implicit_type_def
+}
+
+// Input:
+//     async fn f<T>(&self, x: &T) -> Ret;
+//
+// Output:
+//     type RetTypeOfF<'life0, 'life1, 'async_trait, T>
+//     where
+//         'life0: 'async_trait,
+//         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: 'life0
+//     = impl Future<Output = Ret> + Send + 'async_trait;
+fn assign_implicit_associated_type(
+    sig: &Signature,
+    ret: &TokenStream,
+    bounds: &TokenStream,
+) -> ImplItemType {
+    let implicit_type_name = derive_implicit_type_name(&sig.ident);
+    let generated_doc = format!(
+        "Automatically generated return type for [`Self::{}`]",
+        sig.ident
+    );
+    let mut implicit_type_assign: ImplItemType = parse_quote!(
+        #[allow(clippy::type_repetition_in_bounds)]
+        #[doc = #generated_doc]
+        type #implicit_type_name = impl ::core::future::Future<Output = #ret> + #bounds;
+    );
+    implicit_type_assign.generics = sig.generics.clone();
+    if let Some(receiver_lifetime) = receiver_lifetime(sig) {
+        where_clause_or_default(&mut implicit_type_assign.generics.where_clause)
+            .predicates
+            .push(parse_quote!(Self: #receiver_lifetime));
+    }
+    implicit_type_assign
+}
+
+// Input:
+//     /// Doc.
+//     async fn f<T>(&self, x: &T) -> Ret;
+//
+// Output:
+//     /// Doc.
+//     ///
+//     /// ***
+//     /// _This is an asynchronous method returning [`impl Future<Output = Ret>`](Self::RetTypeOfF)._
+//     async fn f<T>(&self, x: &T) -> Ret;
+fn generate_fn_doc(sig: &Signature, ret: &TokenStream, attrs: &mut Vec<Attribute>) {
+    let newline = quote! {
+        #[doc = ""]
+    };
+    attrs.push(parse_quote!(#newline));
+    let separator = quote! {
+        #[doc = "***"]
+    };
+    attrs.push(parse_quote!(#separator));
+    let implicit_type_name = derive_implicit_type_name(&sig.ident);
+    let doc = format!(
+        "_This is an asynchronous method returning [`impl Future<Output = {}>`](Self::{})._",
+        ret, implicit_type_name
+    );
+    let doc_token_stream = quote! {
+        #[doc = #doc]
+    };
+    attrs.push(parse_quote!(#doc_token_stream));
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
@@ -454,9 +653,62 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
     }
 }
 
+fn contains_static_future_attr(attrs: &[Attribute]) -> bool {
+    for attr in attrs {
+        if let Some(last_seg) = attr.path.segments.last() {
+            if last_seg.ident == "static_future" {
+                let segment_len = attr.path.segments.len();
+                if segment_len != 1 {
+                    return attr.path.segments[segment_len - 2].ident == "async_trait";
+                }
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {
     clause.get_or_insert_with(|| WhereClause {
         where_token: Default::default(),
         predicates: Punctuated::new(),
     })
+}
+
+fn derive_implicit_type_name(id: &Ident) -> Ident {
+    let mut to_upper = true;
+    let upper_camel_case_id: String = id
+        .to_string()
+        .chars()
+        .filter_map(|c| {
+            if c == '_' {
+                to_upper = true;
+                None
+            } else if to_upper {
+                to_upper = false;
+                c.to_uppercase().next()
+            } else {
+                Some(c)
+            }
+        })
+        .collect();
+    format_ident!("RetTypeOf{}", upper_camel_case_id)
+}
+
+fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {
+    for arg in sig.inputs.iter() {
+        if let FnArg::Receiver(arg) = arg {
+            if let Some((_, lifetime)) = &arg.reference {
+                return lifetime.as_ref().cloned();
+            }
+        }
+    }
+    None
+}
+
+fn ret_token_stream(ret_type: &ReturnType) -> TokenStream {
+    match &ret_type {
+        ReturnType::Default => quote!(()),
+        ReturnType::Type(_, ret) => quote!(#ret),
+    }
 }
