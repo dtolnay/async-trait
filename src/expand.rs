@@ -22,6 +22,13 @@ impl ToTokens for Item {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum FutureType {
+    Boxed,
+    Plain,
+    Reconciled,
+}
+
 #[derive(Clone, Copy)]
 enum Context<'a> {
     Trait {
@@ -65,14 +72,14 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let static_ret = contains_static_future_attr(&method.attrs);
+                        let future_type = contains_static_future_attr(&method.attrs);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block, static_ret);
+                            transform_block(context, sig, block, future_type);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
@@ -85,9 +92,9 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             has_self,
                             has_default,
                             is_local,
-                            static_ret,
+                            future_type,
                         );
-                        if static_ret {
+                        if future_type != FutureType::Boxed {
                             let type_def = define_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_types.push(TraitItem::Type(type_def));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
@@ -125,15 +132,21 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let static_ret = contains_static_future_attr(&method.attrs);
+                        let future_type = contains_static_future_attr(&method.attrs);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block, static_ret);
+                        transform_block(context, sig, block, future_type);
                         let bounds = transform_sig(
-                            context, sig, &ret, has_self, false, is_local, static_ret,
+                            context,
+                            sig,
+                            &ret,
+                            has_self,
+                            false,
+                            is_local,
+                            future_type,
                         );
-                        if static_ret {
+                        if future_type != FutureType::Boxed {
                             let type_assign = assign_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
@@ -195,7 +208,6 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: 'async_trait;
-#[allow(clippy::fn_params_excessive_bools)]
 fn transform_sig(
     context: Context,
     sig: &mut Signature,
@@ -203,7 +215,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
-    static_future: bool,
+    future_type: FutureType,
 ) -> TokenStream {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -219,7 +231,7 @@ fn transform_sig(
             FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
             FnArg::Typed(arg) => {
                 lifetimes.visit_type_mut(&mut arg.ty);
-                if static_future {
+                if future_type != FutureType::Boxed {
                     if let Type::Reference(ref_ty) = &*arg.ty {
                         if let Some(lifetime) = ref_ty.lifetime.as_ref() {
                             let span = lifetime.span();
@@ -348,7 +360,7 @@ fn transform_sig(
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
     };
 
-    if static_future {
+    if future_type != FutureType::Boxed {
         let implicit_type_name = derive_implicit_type_name(&sig.ident);
         let params_clone = sig.generics.params.clone();
         let params_iter = params_clone.into_iter().map(|mut p| {
@@ -409,7 +421,12 @@ fn transform_sig(
 //
 //         __ret
 //     }
-fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, static_future: bool) {
+fn transform_block(
+    context: Context,
+    sig: &mut Signature,
+    block: &mut Block,
+    static_future_type: FutureType,
+) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
             return;
@@ -484,7 +501,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block, sta
         }
     };
 
-    if static_future {
+    if static_future_type != FutureType::Boxed {
         let async_block = quote_spanned!(block.brace_token.span=>
             async move { #let_ret }
         );
@@ -653,19 +670,24 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
     }
 }
 
-fn contains_static_future_attr(attrs: &[Attribute]) -> bool {
+fn contains_static_future_attr(attrs: &[Attribute]) -> FutureType {
     for attr in attrs {
         if let Some(last_seg) = attr.path.segments.last() {
-            if last_seg.ident == "static_future" {
+            let static_future_type = match last_seg.ident.to_string().as_str() {
+                "static_future" => FutureType::Plain,
+                "reconciled_static_future" => FutureType::Reconciled,
+                _ => FutureType::Boxed,
+            };
+            if static_future_type != FutureType::Boxed {
                 let segment_len = attr.path.segments.len();
-                if segment_len != 1 {
-                    return attr.path.segments[segment_len - 2].ident == "async_trait";
+                if segment_len != 1 && attr.path.segments[segment_len - 2].ident != "async_trait" {
+                    return FutureType::Boxed;
                 }
-                return true;
+                return static_future_type;
             }
         }
     }
-    false
+    FutureType::Boxed
 }
 
 fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {
