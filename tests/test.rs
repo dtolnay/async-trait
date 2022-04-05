@@ -7,6 +7,12 @@
         type_alias_impl_trait,
     )
 )]
+#![feature(
+    associated_type_bounds,
+    generic_associated_types,
+    min_specialization,
+    type_alias_impl_trait
+)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
@@ -238,7 +244,7 @@ pub async fn test_unimplemented() {
     }
 }
 
-#[cfg(async_trait_nightly_testing)]
+// #[cfg(async_trait_nightly_testing)]
 pub mod static_future {
     use std::usize;
 
@@ -452,7 +458,7 @@ pub mod static_future {
     }
 }
 
-#[cfg(async_trait_nightly_testing)]
+//#[cfg(async_trait_nightly_testing)]
 pub mod static_future_dep {
     use crate::executor;
     use async_trait::{async_trait, static_future};
@@ -540,7 +546,7 @@ pub mod static_future_dep {
     }
 }
 
-#[cfg(async_trait_nightly_testing)]
+// #[cfg(async_trait_nightly_testing)]
 pub mod static_future_pinned {
     use crate::executor;
     use async_trait::{async_trait, static_future};
@@ -598,7 +604,7 @@ pub mod static_future_pinned {
     }
 }
 
-#[cfg(async_trait_nightly_testing)]
+//#[cfg(async_trait_nightly_testing)]
 pub mod static_future_nosend {
     use crate::executor;
     use async_trait::{async_trait, static_future};
@@ -628,6 +634,57 @@ pub mod static_future_nosend {
         let fut_add = f.add(3);
         executor::block_on_simple(fut_add);
         assert_eq!(unsafe { *f.0 }, 14);
+    }
+}
+
+//#[cfg(async_trait_nightly_testing)]
+#[allow(dead_code)]
+pub mod static_future_lifetime {
+    use crate::executor;
+    use async_trait::{async_trait, static_future};
+    use std::future::Future;
+
+    #[async_trait]
+    pub trait Get {
+        #[static_future]
+        async fn get(&self) -> usize;
+    }
+
+    #[async_trait]
+    impl Get for usize {
+        #[static_future]
+        async fn get(&self) -> usize {
+            *self
+        }
+    }
+
+    fn run<R, F: Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    fn is_send<R, F: Future<Output = R> + Send>(_f: &F) -> bool {
+        true
+    }
+
+    async fn wrap<G: Get>(g: &G) -> usize {
+        let fut = g.get();
+        assert!(is_send(&fut));
+        fut.await
+    }
+
+    async fn wrap_wrap<G: Get>(g: &G) -> usize {
+        let fut = wrap(g);
+        // Error: future cannot be sent
+        // assert!(is_send(&fut));
+        fut.await
+    }
+
+    #[test]
+    fn test() {
+        assert_eq!(executor::block_on_simple(2.get()), 2);
+        // lifetime bound not satisfied
+        // const x: usize = 2;
+        // assert_eq!(run(wrap(&x)), 2);
     }
 }
 
