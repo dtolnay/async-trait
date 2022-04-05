@@ -641,20 +641,29 @@ pub mod static_future_nosend {
 #[allow(dead_code)]
 pub mod static_future_lifetime {
     use crate::executor;
-    use async_trait::{async_trait, static_future};
     use std::future::Future;
 
-    #[async_trait]
-    pub trait Get {
-        #[static_future]
-        async fn get(&self) -> usize;
+    pub trait Get: Send + Sync {
+        type Ret<'a>: Future<Output = usize> + Send + 'a
+        where
+            Self: 'a;
+
+        fn get<'a>(&'a self) -> Self::Ret<'a>
+        where
+            Self: 'a;
     }
 
-    #[async_trait]
     impl Get for usize {
-        #[static_future]
-        async fn get(&self) -> usize {
-            *self
+        type Ret<'a>
+        where
+            Self: 'a,
+        = impl Future<Output = usize> + Send + 'a;
+
+        fn get<'a>(&'a self) -> Self::Ret<'a>
+        where
+            Self: 'a,
+        {
+            async move { *self }
         }
     }
 
@@ -674,7 +683,7 @@ pub mod static_future_lifetime {
 
     async fn wrap_wrap<G: Get>(g: &G) -> usize {
         let fut = wrap(g);
-        // Error: future cannot be sent
+        // Error: the parameter type `G` may not live long enough.
         // assert!(is_send(&fut));
         fut.await
     }
@@ -682,9 +691,9 @@ pub mod static_future_lifetime {
     #[test]
     fn test() {
         assert_eq!(executor::block_on_simple(2.get()), 2);
-        // lifetime bound not satisfied
-        // const x: usize = 2;
-        // assert_eq!(run(wrap(&x)), 2);
+        let x: usize = 2;
+        assert_eq!(run(wrap(&x)), 2);
+        assert_eq!(run(wrap_wrap(&x)), 2);
     }
 }
 
