@@ -374,7 +374,9 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let mut item = parse_macro_input!(input as Item);
     expand(&mut item, args.local);
-    TokenStream::from(quote!(#item))
+    let ts = TokenStream::from(quote!(#item));
+    println!("{ts}");
+    ts
 }
 
 #[proc_macro_attribute]

@@ -639,31 +639,22 @@ pub mod static_future_nosend {
 
 //#[cfg(async_trait_nightly_testing)]
 #[allow(dead_code)]
-pub mod static_future_lifetime {
+pub mod static_future_reconciled {
     use crate::executor;
+    use async_trait::{async_trait, reconciled_static_future};
     use std::future::Future;
 
+    #[async_trait]
     pub trait Get: Send + Sync {
-        type Ret<'a>: Future<Output = usize> + Send + 'a
-        where
-            Self: 'a;
-
-        fn get<'a>(&'a self) -> Self::Ret<'a>
-        where
-            Self: 'a;
+        #[reconciled_static_future]
+        async fn get<'a>(&'a self) -> usize;
     }
 
+    #[async_trait]
     impl Get for usize {
-        type Ret<'a>
-        where
-            Self: 'a,
-        = impl Future<Output = usize> + Send + 'a;
-
-        fn get<'a>(&'a self) -> Self::Ret<'a>
-        where
-            Self: 'a,
-        {
-            async move { *self }
+        #[reconciled_static_future]
+        async fn get<'a>(&'a self) -> usize {
+            *self
         }
     }
 

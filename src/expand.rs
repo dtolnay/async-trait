@@ -225,13 +225,21 @@ fn transform_sig(
         .join(sig.paren_token.span)
         .unwrap_or_else(|| sig.ident.span());
 
+    let mut first_lifetime = None;
     let mut lifetimes = CollectLifetimes::new("'life", default_span);
     for arg in sig.inputs.iter_mut() {
         match arg {
-            FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
+            FnArg::Receiver(arg) => {
+                lifetimes.visit_receiver_mut(arg);
+                if future_type == FutureType::Reconciled && first_lifetime.is_none() {
+                    if let Some(lifetime) = arg.lifetime() {
+                        first_lifetime.replace(lifetime.clone());
+                    }
+                }
+            }
             FnArg::Typed(arg) => {
                 lifetimes.visit_type_mut(&mut arg.ty);
-                if future_type != FutureType::Boxed {
+                if future_type == FutureType::Plain {
                     if let Type::Reference(ref_ty) = &*arg.ty {
                         if let Some(lifetime) = ref_ty.lifetime.as_ref() {
                             let span = lifetime.span();
@@ -241,45 +249,53 @@ fn transform_sig(
                                 .push(parse_quote_spanned!(span=> #ty: #lifetime));
                         }
                     }
+                } else if future_type == FutureType::Reconciled && first_lifetime.is_none() {
+                    if let Type::Reference(ref_ty) = &*arg.ty {
+                        if let Some(lifetime) = ref_ty.lifetime.as_ref() {
+                            first_lifetime.replace(lifetime.clone());
+                        }
+                    }
                 }
             }
         }
     }
 
-    for param in &mut sig.generics.params {
-        match param {
-            GenericParam::Type(param) => {
-                let param_name = &param.ident;
-                let span = match param.colon_token.take() {
-                    Some(colon_token) => colon_token.span,
-                    None => param_name.span(),
-                };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+    if future_type != FutureType::Reconciled {
+        for param in &mut sig.generics.params {
+            match param {
+                GenericParam::Type(param) => {
+                    let param_name = &param.ident;
+                    let span = match param.colon_token.take() {
+                        Some(colon_token) => colon_token.span,
+                        None => param_name.span(),
+                    };
+                    let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+                }
+                GenericParam::Lifetime(param) => {
+                    let param_name = &param.lifetime;
+                    let span = match param.colon_token.take() {
+                        Some(colon_token) => colon_token.span,
+                        None => param_name.span(),
+                    };
+                    let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
+                }
+                GenericParam::Const(_) => {}
             }
-            GenericParam::Lifetime(param) => {
-                let param_name = &param.lifetime;
-                let span = match param.colon_token.take() {
-                    Some(colon_token) => colon_token.span,
-                    None => param_name.span(),
-                };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
-            }
-            GenericParam::Const(_) => {}
         }
-    }
 
-    for param in context.lifetimes(&lifetimes.explicit) {
-        let param = &param.lifetime;
-        let span = param.span();
-        where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .push(parse_quote_spanned!(span=> #param: 'async_trait));
+        for param in context.lifetimes(&lifetimes.explicit) {
+            let param = &param.lifetime;
+            let span = param.span();
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote_spanned!(span=> #param: 'async_trait));
+        }
     }
 
     if sig.generics.lt_token.is_none() {
@@ -296,9 +312,11 @@ fn transform_sig(
             .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
     }
 
-    sig.generics
-        .params
-        .push(parse_quote_spanned!(default_span=> 'async_trait));
+    if future_type != FutureType::Reconciled {
+        sig.generics
+            .params
+            .push(parse_quote_spanned!(default_span=> 'async_trait));
+    }
 
     if has_self {
         let bound_span = sig.ident.span();
@@ -327,11 +345,15 @@ fn transform_sig(
         };
 
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
-        where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote_spanned!(bound_span=> Self: 'async_trait)
-        } else {
-            parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
-        });
+        where_clause
+            .predicates
+            .push(if let Some(first_lifetime) = first_lifetime.as_ref() {
+                parse_quote_spanned!(bound_span=> Self: #first_lifetime)
+            } else if assume_bound || is_local {
+                parse_quote_spanned!(bound_span=> Self: 'async_trait)
+            } else {
+                parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
+            });
     }
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
@@ -354,7 +376,9 @@ fn transform_sig(
     }
 
     let ret_span = sig.ident.span();
-    let bounds = if is_local {
+    let bounds = if let Some(first_lifetime) = first_lifetime.as_ref() {
+        parse_quote_spanned!(ret_span=> ::core::marker::Send + #first_lifetime)
+    } else if is_local {
         quote_spanned!(ret_span=> 'async_trait)
     } else {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
