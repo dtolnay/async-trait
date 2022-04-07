@@ -1,11 +1,11 @@
 use crate::lifetime::CollectLifetimes;
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
 use std::mem;
-use syn::punctuated::Punctuated;
+use syn::punctuated::{Pair, Punctuated};
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
@@ -24,9 +24,15 @@ impl ToTokens for Item {
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum FutureType {
+    /// The returned `Future` is boxed.
     Boxed,
-    Plain,
-    Reconciled,
+
+    /// The returned `Future` is an `impl Future`.
+    Unboxed,
+
+    /// The returned `Future` is an `impl Future` with the same lifetime bound for all the
+    /// references and the `Future`.
+    UnboxedSimple,
 }
 
 #[derive(Clone, Copy)]
@@ -72,7 +78,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let future_type = contains_static_future_attr(&method.attrs);
+                        let future_type = contains_future_type_attr(&method.attrs);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
@@ -132,7 +138,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let future_type = contains_static_future_attr(&method.attrs);
+                        let future_type = contains_future_type_attr(&method.attrs);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
@@ -187,7 +193,7 @@ fn lint_suppress_without_body() -> Attribute {
 // Input:
 //     async fn f<T>(&self, x: &T) -> Ret;
 //
-// Output (static_future == false):
+// Output (future_type == Boxed):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -198,7 +204,7 @@ fn lint_suppress_without_body() -> Attribute {
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
 //
-// Output (static_future == true):
+// Output (future_type == Unboxed):
 //     fn f<'life0, 'life1, 'async_trait, T>(
 //         &'life0 self,
 //         x: &'life1 T,
@@ -206,6 +212,15 @@ fn lint_suppress_without_body() -> Attribute {
 //     where
 //         'life0: 'async_trait,
 //         'life1: 'async_trait,
+//         T: 'async_trait,
+//         Self: 'async_trait;
+//
+// Output (future_type == UnboxedSimple):
+//     fn f<'async_trait, T>(
+//         &'async_trait self,
+//         x: &'async_trait T,
+//     ) -> Self::RetTypeOfF<'async_trait>
+//     where
 //         T: 'async_trait,
 //         Self: 'async_trait;
 fn transform_sig(
@@ -228,58 +243,102 @@ fn transform_sig(
     let mut lifetimes = CollectLifetimes::new("'life", default_span);
     for arg in sig.inputs.iter_mut() {
         match arg {
-            FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
+            FnArg::Receiver(arg) => {
+                lifetimes.visit_receiver_mut(arg);
+                if future_type == FutureType::UnboxedSimple {
+                    if let Some(arg_ref) = arg.reference.as_mut() {
+                        arg_ref
+                            .1
+                            .replace(Lifetime::new("'async_trait", Span::call_site()));
+                    }
+                }
+            }
             FnArg::Typed(arg) => {
                 lifetimes.visit_type_mut(&mut arg.ty);
-                if future_type != FutureType::Boxed {
-                    if let Type::Reference(ref_ty) = &*arg.ty {
-                        if let Some(lifetime) = ref_ty.lifetime.as_ref() {
+                if future_type == FutureType::Unboxed {
+                    if let Type::Reference(arg_ty) = &*arg.ty {
+                        if let Some(lifetime) = arg_ty.lifetime.as_ref() {
                             let span = lifetime.span();
-                            let ty = &*ref_ty.elem;
+                            let ty = &*arg_ty.elem;
                             where_clause_or_default(&mut sig.generics.where_clause)
                                 .predicates
                                 .push(parse_quote_spanned!(span=> #ty: #lifetime));
                         }
+                    }
+                } else if future_type == FutureType::UnboxedSimple {
+                    if let Type::Reference(arg_ty) = &mut *arg.ty {
+                        arg_ty
+                            .lifetime
+                            .replace(Lifetime::new("'async_trait", Span::call_site()));
                     }
                 }
             }
         }
     }
 
-    for param in &mut sig.generics.params {
-        match param {
-            GenericParam::Type(param) => {
-                let param_name = &param.ident;
-                let span = match param.colon_token.take() {
-                    Some(colon_token) => colon_token.span,
-                    None => param_name.span(),
-                };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+    if future_type == FutureType::UnboxedSimple {
+        let mut lifetime_replaced = false;
+        let mut filtered_params = Vec::<Pair<GenericParam, Token![,]>>::new();
+        while let Some(param) = sig.generics.params.pop() {
+            if let Pair::Punctuated(param, token) = param {
+                match param {
+                    GenericParam::Lifetime(mut lifetime) => {
+                        if !lifetime_replaced {
+                            lifetime.lifetime = Lifetime::new("'async_trait", Span::call_site());
+                            lifetime.bounds.clear();
+                            filtered_params
+                                .push(Pair::Punctuated(GenericParam::Lifetime(lifetime), token));
+                            lifetime_replaced = true;
+                        }
+                    }
+                    param => filtered_params.push(Pair::Punctuated(param, token)),
+                }
             }
-            GenericParam::Lifetime(param) => {
-                let param_name = &param.lifetime;
-                let span = match param.colon_token.take() {
-                    Some(colon_token) => colon_token.span,
-                    None => param_name.span(),
-                };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
-            }
-            GenericParam::Const(_) => {}
         }
-    }
+        if !lifetime_replaced {
+            sig.generics
+                .params
+                .push(parse_quote_spanned!(default_span=> 'async_trait));
+        }
+        while let Some(param) = filtered_params.pop() {
+            sig.generics.params.push(param.into_value());
+        }
+    } else {
+        for param in &mut sig.generics.params {
+            match param {
+                GenericParam::Type(param) => {
+                    let param_name = &param.ident;
+                    let span = match param.colon_token.take() {
+                        Some(colon_token) => colon_token.span,
+                        None => param_name.span(),
+                    };
+                    let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+                }
+                GenericParam::Lifetime(param) => {
+                    let param_name = &param.lifetime;
+                    let span = match param.colon_token.take() {
+                        Some(colon_token) => colon_token.span,
+                        None => param_name.span(),
+                    };
+                    let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
+                }
+                GenericParam::Const(_) => {}
+            }
+        }
 
-    for param in context.lifetimes(&lifetimes.explicit) {
-        let param = &param.lifetime;
-        let span = param.span();
-        where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .push(parse_quote_spanned!(span=> #param: 'async_trait));
+        for param in context.lifetimes(&lifetimes.explicit) {
+            let param = &param.lifetime;
+            let span = param.span();
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote_spanned!(span=> #param: 'async_trait));
+        }
     }
 
     if sig.generics.lt_token.is_none() {
@@ -289,16 +348,17 @@ fn transform_sig(
         sig.generics.gt_token = Some(Token![>](sig.paren_token.span));
     }
 
-    for elided in lifetimes.elided {
-        sig.generics.params.push(parse_quote!(#elided));
-        where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
+    if future_type != FutureType::UnboxedSimple {
+        for elided in lifetimes.elided {
+            sig.generics.params.push(parse_quote!(#elided));
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
+        }
+        sig.generics
+            .params
+            .push(parse_quote_spanned!(default_span=> 'async_trait));
     }
-
-    sig.generics
-        .params
-        .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
         let bound_span = sig.ident.span();
@@ -396,7 +456,7 @@ fn transform_sig(
 //         self + x + a + b
 //     }
 //
-// Output (static_future == false):
+// Output (future_type == Boxed):
 //     Box::pin(async move {
 //         let ___ret: Ret = {
 //             let __self = self;
@@ -409,7 +469,7 @@ fn transform_sig(
 //         ___ret
 //     })
 //
-// Output (static_future == true):
+// Output (future_type == Unboxed || future_type == UnboxedSimple):
 //     async move {
 //         let __ret: Ret = {
 //             let __self = self;
@@ -425,7 +485,7 @@ fn transform_block(
     context: Context,
     sig: &mut Signature,
     block: &mut Block,
-    static_future_type: FutureType,
+    future_type: FutureType,
 ) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
         if block.stmts.len() == 1 && item.to_string() == ";" {
@@ -501,7 +561,7 @@ fn transform_block(
         }
     };
 
-    if static_future_type != FutureType::Boxed {
+    if future_type != FutureType::Boxed {
         let async_block = quote_spanned!(block.brace_token.span=>
             async move { #let_ret }
         );
@@ -535,7 +595,7 @@ fn define_implicit_associated_type(
         sig.ident
     );
     let mut implicit_type_def: TraitItemType = parse_quote!(
-        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(clippy::needless_lifetimes, clippy::type_repetition_in_bounds)]
         #[doc = #generated_doc]
         type #implicit_type_name: ::core::future::Future<Output = #ret> + #bounds;
     );
@@ -570,7 +630,7 @@ fn assign_implicit_associated_type(
         sig.ident
     );
     let mut implicit_type_assign: ImplItemType = parse_quote!(
-        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(clippy::needless_lifetimes, clippy::type_repetition_in_bounds)]
         #[doc = #generated_doc]
         type #implicit_type_name = impl ::core::future::Future<Output = #ret> + #bounds;
     );
@@ -670,20 +730,23 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
     }
 }
 
-fn contains_static_future_attr(attrs: &[Attribute]) -> FutureType {
+/// Checks if the method attributes specify the type of `Future`.
+///
+/// If none found, the `Future` is boxed.
+fn contains_future_type_attr(attrs: &[Attribute]) -> FutureType {
     for attr in attrs {
         if let Some(last_seg) = attr.path.segments.last() {
-            let static_future_type = match last_seg.ident.to_string().as_str() {
-                "static_future" => FutureType::Plain,
-                "reconciled_static_future" => FutureType::Reconciled,
+            let future_type = match last_seg.ident.to_string().as_str() {
+                "unboxed" => FutureType::Unboxed,
+                "unboxed_simple" => FutureType::UnboxedSimple,
                 _ => FutureType::Boxed,
             };
-            if static_future_type != FutureType::Boxed {
+            if future_type != FutureType::Boxed {
                 let segment_len = attr.path.segments.len();
                 if segment_len != 1 && attr.path.segments[segment_len - 2].ident != "async_trait" {
                     return FutureType::Boxed;
                 }
-                return static_future_type;
+                return future_type;
             }
         }
     }

@@ -303,12 +303,12 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 //!
-//! # Experimental feature: `static_future`
+//! # Experimental feature: `unboxed`
 //!
 //! An `async fn` without a default implementation may get transformed into a
 //! method that returns `impl Future + Send + 'async_trait` when
-//! `#[macro@static_future]` is invoked on both the trait and the impl blocks.
-//! `#[macro@static_future]` requires the following unstable language features:
+//! `#[macro@unboxed]` is invoked on both the trait and the impl blocks.
+//! `#[macro@unboxed]` requires the following unstable language features:
 //! `associated_type_bounds`, `generic_associated_types`, and
 //! `type_alias_impl_trait`.
 //!
@@ -323,7 +323,7 @@
 //! #[async_trait]
 //! pub trait MyFastTrait {
 //!     /// `cnt_fast` returns an instance of a concrete `Future` type.
-//!     #[static_future]
+//!     #[unboxed]
 //!     async fn cnt_fast(&self) -> usize;
 //!
 //!     // presumably other methods
@@ -333,14 +333,14 @@
 //!
 //! #[async_trait]
 //! impl MyFastTrait for MyType {
-//!     #[static_future]
+//!     #[unboxed]
 //!     async fn cnt_fast(&self) -> usize {
 //!         self.0
 //!     }
 //! }
 //!
 //! let value = MyType(1);
-//! let static_future = value.cnt_fast();
+//! let unboxed_future = value.cnt_fast();
 //! ```
 
 #![allow(
@@ -378,11 +378,11 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn unboxed(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
 #[proc_macro_attribute]
-pub fn reconciled_static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn unboxed_simple(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }

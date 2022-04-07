@@ -239,11 +239,11 @@ pub async fn test_unimplemented() {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod static_future {
+pub mod unboxed {
     use std::usize;
 
     use crate::executor;
-    use async_trait::{async_trait, static_future};
+    use async_trait::{async_trait, unboxed};
 
     #[derive(Default)]
     pub struct F(usize);
@@ -262,7 +262,7 @@ pub mod static_future {
         /// # Panics
         ///
         /// None.
-        #[async_trait::static_future]
+        #[async_trait::unboxed]
         async fn add_u8(&self, u: u8) -> usize;
 
         async fn add_u8_1_wrap(&self) -> usize;
@@ -276,28 +276,28 @@ pub mod static_future {
         /// # Panics
         ///
         /// None.
-        #[static_future]
+        #[unboxed]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize);
 
-        #[static_future]
+        #[unboxed]
         async fn sum_array(&self, u: &[u8]) -> usize;
 
-        #[static_future]
+        #[unboxed]
         async fn get_len(&mut self, s: &str) -> usize;
 
-        #[static_future]
+        #[unboxed]
         async fn sum_len(&mut self, s1: &str, s2: &str) -> usize;
 
-        #[static_future]
+        #[unboxed]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize;
 
-        #[static_future]
+        #[unboxed]
         async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T);
 
-        #[static_future]
+        #[unboxed]
         async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T;
 
-        #[static_future]
+        #[unboxed]
         async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
@@ -307,7 +307,7 @@ pub mod static_future {
     #[async_trait]
     impl FastAsyncTrait for F {
         /// It implements [`FastAsyncTrait::add_u8`].
-        #[static_future]
+        #[unboxed]
         async fn add_u8(&self, u: u8) -> usize {
             self.0 + (u as usize)
         }
@@ -316,25 +316,25 @@ pub mod static_future {
             self.add_u8(1).await
         }
 
-        #[static_future]
+        #[unboxed]
         async fn add_usize_mut<'u>(&self, u: &'u mut usize) -> (&'u mut usize, usize) {
             (*u) += self.0;
             (u, self.0)
         }
 
         /// It implements [`FastAsyncTrait::sum_array`].
-        #[static_future]
+        #[unboxed]
         async fn sum_array(&self, u: &[u8]) -> usize {
             u.iter().sum::<u8>() as usize
         }
 
-        #[static_future]
+        #[unboxed]
         async fn get_len(&mut self, s: &str) -> usize {
             self.0 = s.len();
             self.0
         }
 
-        #[static_future]
+        #[unboxed]
         async fn sum_len(&mut self, s1: &str, s2: &str) -> usize {
             let len1 = self.get_len(s1).await;
             let len2 = self.get_len(s2).await;
@@ -342,23 +342,23 @@ pub mod static_future {
             self.0
         }
 
-        #[static_future]
+        #[unboxed]
         async fn get_usize_ref<'s>(&'s self) -> &'s usize {
             &self.0
         }
 
-        #[static_future]
+        #[unboxed]
         async fn clone_ret_pair<T: Clone + Copy + Send>(&self, t: T) -> (usize, T) {
             (self.0, t)
         }
 
-        #[static_future]
+        #[unboxed]
         async fn reset_t_mut<'t, T: Default + Send + Sync>(&self, t: &'t mut T) -> &'t mut T {
             *t = T::default();
             t
         }
 
-        #[static_future]
+        #[unboxed]
         async fn no_self<'t, 'y, T: Default + Send + Sync, Y: Clone + Sync>(
             t_mut: &'t mut T,
             y_ref: &'y Y,
@@ -453,19 +453,19 @@ pub mod static_future {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod static_future_dep {
+pub mod unboxed_dep {
     use crate::executor;
-    use async_trait::{async_trait, static_future};
+    use async_trait::{async_trait, unboxed};
 
     #[async_trait]
     pub trait AsyncIter {
-        #[static_future]
+        #[unboxed]
         async fn next(&mut self) -> Option<usize>;
     }
     struct A(usize);
     #[async_trait]
     impl AsyncIter for A {
-        #[static_future]
+        #[unboxed]
         async fn next(&mut self) -> Option<usize> {
             if self.0 > 0 {
                 self.0 -= 1;
@@ -541,9 +541,9 @@ pub mod static_future_dep {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod static_future_pinned {
+pub mod unboxed_pinned {
     use crate::executor;
-    use async_trait::{async_trait, static_future};
+    use async_trait::{async_trait, unboxed};
 
     struct F(*const usize, std::marker::PhantomPinned);
     unsafe impl Send for F {}
@@ -555,13 +555,13 @@ pub mod static_future_pinned {
 
     #[async_trait]
     pub trait FastAsyncTrait {
-        #[static_future]
+        #[unboxed]
         async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize);
     }
 
     #[async_trait]
     impl FastAsyncTrait for F {
-        #[static_future]
+        #[unboxed]
         async fn get_ref<'s>(&'s self, g: G) -> (&'s usize, usize) {
             unsafe { (&*self.0, *g.0) }
         }
@@ -599,21 +599,21 @@ pub mod static_future_pinned {
 }
 
 #[cfg(async_trait_nightly_testing)]
-pub mod static_future_nosend {
+pub mod unboxed_nosend {
     use crate::executor;
-    use async_trait::{async_trait, static_future};
+    use async_trait::{async_trait, unboxed};
 
     struct F(*mut usize);
 
     #[async_trait(?Send)]
     pub trait FastAsyncTrait {
-        #[static_future]
+        #[unboxed]
         async fn add<'s>(&'s mut self, a: usize);
     }
 
     #[async_trait(?Send)]
     impl FastAsyncTrait for F {
-        #[static_future]
+        #[unboxed]
         async fn add<'s>(&'s mut self, a: usize) {
             unsafe {
                 (*self.0) += a;
@@ -628,6 +628,78 @@ pub mod static_future_nosend {
         let fut_add = f.add(3);
         executor::block_on_simple(fut_add);
         assert_eq!(unsafe { *f.0 }, 14);
+    }
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub mod unboxed_simple {
+    use crate::executor;
+    use async_trait::{async_trait, unboxed_simple};
+    use std::future::Future;
+
+    #[async_trait]
+    pub trait Get: Send + Sync {
+        #[unboxed_simple]
+        async fn get<'a>(&'a self) -> usize;
+
+        #[unboxed_simple]
+        async fn add(&self, v: usize) -> usize;
+
+        #[unboxed_simple]
+        async fn double(v: usize) -> usize;
+    }
+
+    #[async_trait]
+    impl Get for usize {
+        #[unboxed_simple]
+        async fn get<'a>(&'a self) -> usize {
+            *self
+        }
+
+        #[unboxed_simple]
+        async fn add(&self, v: usize) -> usize {
+            *self + v
+        }
+
+        #[unboxed_simple]
+        async fn double(v: usize) -> usize {
+            v * 2
+        }
+    }
+
+    fn run<R, F: Future<Output = R> + Send>(f: F) -> R {
+        executor::block_on_simple(f)
+    }
+
+    fn is_send<R, F: Future<Output = R> + Send>(_f: &F) -> bool {
+        true
+    }
+
+    async fn wrap<G: Get>(g: &G) -> usize {
+        let fut_get = g.get();
+        assert!(is_send(&fut_get));
+        let fut_add = g.add(0);
+        assert!(is_send(&fut_add));
+        assert_eq!(fut_add.await, g.get().await);
+        let fut_double = G::double(1);
+        assert!(is_send(&fut_double));
+        assert_eq!(fut_double.await, 2);
+        fut_get.await
+    }
+
+    async fn wrap_wrap<G: Get>(g: &G) -> usize {
+        let fut = wrap(g);
+        // Error: the parameter type `G` may not live long enough.
+        // assert!(is_send(&fut));
+        fut.await
+    }
+
+    #[test]
+    fn test() {
+        assert_eq!(executor::block_on_simple(2.get()), 2);
+        let x: usize = 2;
+        assert_eq!(run(wrap(&x)), 2);
+        assert_eq!(run(wrap_wrap(&x)), 2);
     }
 }
 
