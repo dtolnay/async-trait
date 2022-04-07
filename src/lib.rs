@@ -380,11 +380,11 @@ pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn unboxed(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
 #[proc_macro_attribute]
-pub fn reconciled_static_future(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn unboxed_simple(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
