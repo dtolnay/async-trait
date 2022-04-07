@@ -595,7 +595,7 @@ fn define_implicit_associated_type(
         sig.ident
     );
     let mut implicit_type_def: TraitItemType = parse_quote!(
-        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(clippy::needless_lifetimes, clippy::type_repetition_in_bounds)]
         #[doc = #generated_doc]
         type #implicit_type_name: ::core::future::Future<Output = #ret> + #bounds;
     );
@@ -630,7 +630,7 @@ fn assign_implicit_associated_type(
         sig.ident
     );
     let mut implicit_type_assign: ImplItemType = parse_quote!(
-        #[allow(clippy::type_repetition_in_bounds)]
+        #[allow(clippy::needless_lifetimes, clippy::type_repetition_in_bounds)]
         #[doc = #generated_doc]
         type #implicit_type_name = impl ::core::future::Future<Output = #ret> + #bounds;
     );

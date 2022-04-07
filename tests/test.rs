@@ -7,12 +7,6 @@
         type_alias_impl_trait,
     )
 )]
-#![feature(
-    associated_type_bounds,
-    generic_associated_types,
-    min_specialization,
-    type_alias_impl_trait
-)]
 #![allow(
     clippy::let_underscore_drop,
     clippy::let_unit_value,
@@ -244,7 +238,7 @@ pub async fn test_unimplemented() {
     }
 }
 
-// #[cfg(async_trait_nightly_testing)]
+#[cfg(async_trait_nightly_testing)]
 pub mod unboxed {
     use std::usize;
 
@@ -458,7 +452,7 @@ pub mod unboxed {
     }
 }
 
-//#[cfg(async_trait_nightly_testing)]
+#[cfg(async_trait_nightly_testing)]
 pub mod unboxed_dep {
     use crate::executor;
     use async_trait::{async_trait, unboxed};
@@ -546,7 +540,7 @@ pub mod unboxed_dep {
     }
 }
 
-// #[cfg(async_trait_nightly_testing)]
+#[cfg(async_trait_nightly_testing)]
 pub mod unboxed_pinned {
     use crate::executor;
     use async_trait::{async_trait, unboxed};
@@ -604,7 +598,7 @@ pub mod unboxed_pinned {
     }
 }
 
-//#[cfg(async_trait_nightly_testing)]
+#[cfg(async_trait_nightly_testing)]
 pub mod unboxed_nosend {
     use crate::executor;
     use async_trait::{async_trait, unboxed};
@@ -637,7 +631,7 @@ pub mod unboxed_nosend {
     }
 }
 
-//#[cfg(async_trait_nightly_testing)]
+#[cfg(async_trait_nightly_testing)]
 pub mod unboxed_simple {
     use crate::executor;
     use async_trait::{async_trait, unboxed_simple};
@@ -647,6 +641,12 @@ pub mod unboxed_simple {
     pub trait Get: Send + Sync {
         #[unboxed_simple]
         async fn get<'a>(&'a self) -> usize;
+
+        #[unboxed_simple]
+        async fn add(&self, v: usize) -> usize;
+
+        #[unboxed_simple]
+        async fn double(v: usize) -> usize;
     }
 
     #[async_trait]
@@ -654,6 +654,16 @@ pub mod unboxed_simple {
         #[unboxed_simple]
         async fn get<'a>(&'a self) -> usize {
             *self
+        }
+
+        #[unboxed_simple]
+        async fn add(&self, v: usize) -> usize {
+            *self + v
+        }
+
+        #[unboxed_simple]
+        async fn double(v: usize) -> usize {
+            v * 2
         }
     }
 
@@ -666,9 +676,15 @@ pub mod unboxed_simple {
     }
 
     async fn wrap<G: Get>(g: &G) -> usize {
-        let fut = g.get();
-        assert!(is_send(&fut));
-        fut.await
+        let fut_get = g.get();
+        assert!(is_send(&fut_get));
+        let fut_add = g.add(0);
+        assert!(is_send(&fut_add));
+        assert_eq!(fut_add.await, g.get().await);
+        let fut_double = G::double(1);
+        assert!(is_send(&fut_double));
+        assert_eq!(fut_double.await, 2);
+        fut_get.await
     }
 
     async fn wrap_wrap<G: Get>(g: &G) -> usize {
