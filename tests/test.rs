@@ -1526,8 +1526,6 @@ pub mod issue106 {
 
 // https://github.com/dtolnay/async-trait/issues/110
 pub mod issue110 {
-    #![deny(clippy::all)]
-
     use async_trait::async_trait;
     use std::marker::PhantomData;
 
@@ -1583,8 +1581,6 @@ pub mod issue123 {
 
 // https://github.com/dtolnay/async-trait/issues/129
 pub mod issue129 {
-    #![deny(clippy::pedantic)]
-
     use async_trait::async_trait;
 
     #[async_trait]
