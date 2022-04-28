@@ -567,7 +567,7 @@ fn transform_block(
     if future_type != FutureType::Boxed {
         let async_block = if is_local {
             quote_spanned!(block.brace_token.span=>
-                async move { #let_ret };
+                async move { #let_ret }
             )
         } else {
             quote_spanned!(block.brace_token.span=>
