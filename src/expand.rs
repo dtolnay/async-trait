@@ -85,7 +85,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
-                            transform_block(context, sig, block, is_local, future_type);
+                            transform_block(context, sig, block, future_type);
                             method.attrs.push(lint_suppress_with_body());
                         } else {
                             method.attrs.push(lint_suppress_without_body());
@@ -142,7 +142,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
-                        transform_block(context, sig, block, is_local, future_type);
+                        transform_block(context, sig, block, future_type);
                         let bounds = transform_sig(
                             context,
                             sig,
@@ -470,8 +470,7 @@ fn transform_sig(
 //     })
 //
 // Output (future_type == Unboxed || future_type == UnboxedSimple):
-//     fn send_ident<F: ::core::marker::Send>(f: F) -> F { f }
-//     let __ret = async move {
+//     async move {
 //         let __ret: Ret = {
 //             let __self = self;
 //             let x = x;
@@ -481,13 +480,11 @@ fn transform_sig(
 //         };
 //
 //         __ret
-//     };
-//     send_ident(__ret)
+//     }
 fn transform_block(
     context: Context,
     sig: &mut Signature,
     block: &mut Block,
-    is_local: bool,
     future_type: FutureType,
 ) {
     if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
@@ -565,17 +562,9 @@ fn transform_block(
     };
 
     if future_type != FutureType::Boxed {
-        let async_block = if is_local {
-            quote_spanned!(block.brace_token.span=>
-                async move { #let_ret }
-            )
-        } else {
-            quote_spanned!(block.brace_token.span=>
-                fn send_ident<F: ::core::marker::Send>(f: F) -> F { f }
-                let __ret = async move { #let_ret };
-                send_ident(__ret)
-            )
-        };
+        let async_block = quote_spanned!(block.brace_token.span=>
+            async move { #let_ret }
+        );
         block.stmts = parse_quote!(#async_block);
     } else {
         let box_pin = quote_spanned!(block.brace_token.span=>
