@@ -1508,9 +1508,9 @@ pub mod issue106 {
     }
 
     #[async_trait]
-    impl<P: ?Sized> ProcessPool for &P
+    impl<P> ProcessPool for &P
     where
-        P: ProcessPool,
+        P: ?Sized + ProcessPool,
     {
         type ThreadPool = P::ThreadPool;
 
