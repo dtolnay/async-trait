@@ -15,3 +15,11 @@ error: no rules expected the token `{`
 ...
 18 |         picky!({ 123 });
    |                ^ no rules expected this token in macro call
+
+warning: 1st rule of macro `picky` is never used
+ --> tests/ui/delimiter-span.rs:4:5
+  |
+4 |     ($(t:tt)*) => {};
+  |     ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_macro_rules)]` on by default
