@@ -10,7 +10,7 @@ use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
     ImplItem, Lifetime, LifetimeDef, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token,
-    TraitItem, Type, TypeParamBound, TypePath, WhereClause,
+    TraitItem, Type, TypeImplTrait, TypeParamBound, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -275,6 +275,13 @@ fn transform_sig(
             }) => {}
             FnArg::Receiver(arg) => arg.mutability = None,
             FnArg::Typed(arg) => {
+                if let Type::ImplTrait(TypeImplTrait { ref mut bounds, .. }) = *arg.ty {
+                    use syn::spanned::Spanned;
+                    let span = bounds.span();
+                    let lifetime = Lifetime::new("'async_trait", span);
+                    bounds.push(TypeParamBound::Lifetime(lifetime));
+                }
+
                 if let Pat::Ident(ident) = &mut *arg.pat {
                     ident.by_ref = None;
                     ident.mutability = None;
