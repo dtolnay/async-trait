@@ -1,4 +1,4 @@
-use crate::lifetime::CollectLifetimes;
+use crate::lifetime::{AddLifetimeToImplTrait, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
 use proc_macro2::TokenStream;
@@ -283,6 +283,7 @@ fn transform_sig(
                     let m = mut_pat(&mut arg.pat);
                     arg.pat = parse_quote!(#m #positional);
                 }
+                AddLifetimeToImplTrait.visit_type_mut(&mut arg.ty);
             }
         }
     }

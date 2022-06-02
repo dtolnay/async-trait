@@ -1,6 +1,8 @@
 use proc_macro2::Span;
 use syn::visit_mut::{self, VisitMut};
-use syn::{GenericArgument, Lifetime, Receiver, TypeReference};
+use syn::{
+    parse_quote_spanned, Expr, GenericArgument, Lifetime, Receiver, TypeImplTrait, TypeReference,
+};
 
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
@@ -60,5 +62,24 @@ impl VisitMut for CollectLifetimes {
             self.visit_lifetime(lifetime);
         }
         visit_mut::visit_generic_argument_mut(self, gen);
+    }
+}
+
+pub struct AddLifetimeToImplTrait;
+
+impl VisitMut for AddLifetimeToImplTrait {
+    fn visit_type_impl_trait_mut(&mut self, ty: &mut TypeImplTrait) {
+        let span = ty.impl_token.span;
+        let lifetime = parse_quote_spanned!(span=> 'async_trait);
+        ty.bounds.insert(0, lifetime);
+        if let Some(punct) = ty.bounds.pairs_mut().next().unwrap().punct_mut() {
+            punct.span = span;
+        }
+    }
+
+    fn visit_expr_mut(&mut self, _e: &mut Expr) {
+        // Do not recurse into impl Traits inside of an array length expression.
+        //
+        //    fn outer(arg: [u8; { fn inner(_: impl Trait) {}; 0 }]);
     }
 }
