@@ -1374,6 +1374,16 @@ pub mod issue169 {
     pub fn test(_t: &dyn Trait) {}
 }
 
+// https://github.com/dtolnay/async-trait/issues/177
+pub mod issue177 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn foo(&self, _callback: impl FnMut(&str) + Send) {}
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/183
 pub mod issue183 {
     #![deny(clippy::shadow_same)]
