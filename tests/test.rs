@@ -1447,5 +1447,6 @@ pub mod issue204 {
     #[async_trait]
     pub trait Trait {
         async fn f(arg: &impl Trait);
+        async fn g(arg: *const impl Trait);
     }
 }
