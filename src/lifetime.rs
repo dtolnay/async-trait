@@ -75,6 +75,7 @@ impl VisitMut for AddLifetimeToImplTrait {
         if let Some(punct) = ty.bounds.pairs_mut().next().unwrap().punct_mut() {
             punct.span = span;
         }
+        visit_mut::visit_type_impl_trait_mut(self, ty);
     }
 
     fn visit_expr_mut(&mut self, _e: &mut Expr) {
