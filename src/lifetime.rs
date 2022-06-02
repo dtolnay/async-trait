@@ -81,13 +81,7 @@ impl VisitMut for AddLifetimeToImplTrait {
     }
 
     fn visit_type_reference_mut(&mut self, ty: &mut TypeReference) {
-        if let Type::ImplTrait(_) = *ty.elem {
-            let elem = mem::replace(&mut *ty.elem, Type::Verbatim(TokenStream::new()));
-            *ty.elem = Type::Paren(TypeParen {
-                paren_token: token::Paren(ty.and_token.span),
-                elem: Box::new(elem),
-            });
-        }
+        parenthesize_impl_trait(&mut ty.elem, ty.and_token.span);
         visit_mut::visit_type_reference_mut(self, ty);
     }
 
@@ -95,5 +89,15 @@ impl VisitMut for AddLifetimeToImplTrait {
         // Do not recurse into impl Traits inside of an array length expression.
         //
         //    fn outer(arg: [u8; { fn inner(_: impl Trait) {}; 0 }]);
+    }
+}
+
+fn parenthesize_impl_trait(elem: &mut Type, paren_span: Span) {
+    if let Type::ImplTrait(_) = *elem {
+        let placeholder = Type::Verbatim(TokenStream::new());
+        *elem = Type::Paren(TypeParen {
+            paren_token: token::Paren(paren_span),
+            elem: Box::new(mem::replace(elem, placeholder)),
+        });
     }
 }
