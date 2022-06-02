@@ -1402,3 +1402,40 @@ pub mod issue183 {
         async fn foo(_n: i32) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/199
+pub mod issue199 {
+    use async_trait::async_trait;
+    use std::cell::Cell;
+
+    struct IncrementOnDrop<'a>(&'a Cell<usize>);
+
+    impl<'a> Drop for IncrementOnDrop<'a> {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    #[async_trait(?Send)]
+    trait Trait {
+        async fn f(counter: &Cell<usize>, arg: IncrementOnDrop<'_>);
+    }
+
+    struct Struct;
+
+    #[async_trait(?Send)]
+    impl Trait for Struct {
+        async fn f(counter: &Cell<usize>, _: IncrementOnDrop<'_>) {
+            assert_eq!(counter.get(), 0); // second arg not dropped yet
+        }
+    }
+
+    #[test]
+    fn test() {
+        let counter = Cell::new(0);
+        let future = Struct::f(&counter, IncrementOnDrop(&counter));
+        assert_eq!(counter.get(), 0);
+        drop(future);
+        assert_eq!(counter.get(), 1);
+    }
+}
