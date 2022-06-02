@@ -2,8 +2,8 @@ use proc_macro2::{Span, TokenStream};
 use std::mem;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, Receiver, Type, TypeImplTrait,
-    TypeParen, TypeReference,
+    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, Receiver, ReturnType, Type,
+    TypeBareFn, TypeImplTrait, TypeParen, TypePtr, TypeReference,
 };
 
 pub struct CollectLifetimes {
@@ -81,19 +81,35 @@ impl VisitMut for AddLifetimeToImplTrait {
     }
 
     fn visit_type_reference_mut(&mut self, ty: &mut TypeReference) {
-        if let Type::ImplTrait(_) = *ty.elem {
-            let elem = mem::replace(&mut *ty.elem, Type::Verbatim(TokenStream::new()));
-            *ty.elem = Type::Paren(TypeParen {
-                paren_token: token::Paren(ty.and_token.span),
-                elem: Box::new(elem),
-            });
-        }
+        parenthesize_impl_trait(&mut ty.elem, ty.and_token.span);
         visit_mut::visit_type_reference_mut(self, ty);
+    }
+
+    fn visit_type_ptr_mut(&mut self, ty: &mut TypePtr) {
+        parenthesize_impl_trait(&mut ty.elem, ty.star_token.span);
+        visit_mut::visit_type_ptr_mut(self, ty);
+    }
+
+    fn visit_type_bare_fn_mut(&mut self, ty: &mut TypeBareFn) {
+        if let ReturnType::Type(arrow, return_type) = &mut ty.output {
+            parenthesize_impl_trait(return_type, arrow.spans[0]);
+        }
+        visit_mut::visit_type_bare_fn_mut(self, ty);
     }
 
     fn visit_expr_mut(&mut self, _e: &mut Expr) {
         // Do not recurse into impl Traits inside of an array length expression.
         //
         //    fn outer(arg: [u8; { fn inner(_: impl Trait) {}; 0 }]);
+    }
+}
+
+fn parenthesize_impl_trait(elem: &mut Type, paren_span: Span) {
+    if let Type::ImplTrait(_) = *elem {
+        let placeholder = Type::Verbatim(TokenStream::new());
+        *elem = Type::Paren(TypeParen {
+            paren_token: token::Paren(paren_span),
+            elem: Box::new(mem::replace(elem, placeholder)),
+        });
     }
 }
