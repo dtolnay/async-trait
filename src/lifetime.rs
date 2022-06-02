@@ -1,7 +1,9 @@
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
+use std::mem;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote_spanned, Expr, GenericArgument, Lifetime, Receiver, TypeImplTrait, TypeReference,
+    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, Receiver, Type, TypeImplTrait,
+    TypeParen, TypeReference,
 };
 
 pub struct CollectLifetimes {
@@ -76,6 +78,17 @@ impl VisitMut for AddLifetimeToImplTrait {
             punct.span = span;
         }
         visit_mut::visit_type_impl_trait_mut(self, ty);
+    }
+
+    fn visit_type_reference_mut(&mut self, ty: &mut TypeReference) {
+        if let Type::ImplTrait(_) = *ty.elem {
+            let elem = mem::replace(&mut *ty.elem, Type::Verbatim(TokenStream::new()));
+            *ty.elem = Type::Paren(TypeParen {
+                paren_token: token::Paren(ty.and_token.span),
+                elem: Box::new(elem),
+            });
+        }
+        visit_mut::visit_type_reference_mut(self, ty);
     }
 
     fn visit_expr_mut(&mut self, _e: &mut Expr) {
