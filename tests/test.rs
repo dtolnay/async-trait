@@ -1439,3 +1439,13 @@ pub mod issue199 {
         assert_eq!(counter.get(), 1);
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/204
+pub mod issue204 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(arg: &impl Trait);
+    }
+}
