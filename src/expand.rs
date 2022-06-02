@@ -355,7 +355,11 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                 } else {
                     let pat = &arg.pat;
                     let ident = positional_arg(i, pat);
-                    quote!(let #pat = #ident;)
+                    if let Pat::Wild(_) = **pat {
+                        quote!(let #ident = #ident;)
+                    } else {
+                        quote!(let #pat = #ident;)
+                    }
                 }
             }
         })
