@@ -43,7 +43,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@clippy
-      - run: cargo clippy --tests -- -Dclippy::all -Dclippy::pedantic
+      # Temporarily disabled on --tests because clippy is crashing.
+      # https://github.com/rust-lang/rust-clippy/issues/9089
+      - run: cargo clippy -- -Dclippy::all -Dclippy::pedantic
 
   miri:
     name: Miri
