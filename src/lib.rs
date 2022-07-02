@@ -346,6 +346,7 @@
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
+    clippy::explicit_auto_deref,
     clippy::if_not_else,
     clippy::items_after_statements,
     clippy::module_name_repetitions,
