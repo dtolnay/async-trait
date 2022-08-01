@@ -2,6 +2,7 @@
 name = "async-trait"
 version = "0.1.56"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
+categories = ["asynchronous", "no-std"]
 description = "Type erasure for async trait methods"
 documentation = "https://docs.rs/async-trait"
 edition = "2018"
