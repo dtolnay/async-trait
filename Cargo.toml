@@ -2,14 +2,14 @@
 name = "async-trait"
 version = "0.1.56"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
-edition = "2018"
-rust-version = "1.39"
-license = "MIT OR Apache-2.0"
 description = "Type erasure for async trait methods"
-repository = "https://github.com/dtolnay/async-trait"
 documentation = "https://docs.rs/async-trait"
-readme = "README.md"
+edition = "2018"
 keywords = ["async"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/dtolnay/async-trait"
+rust-version = "1.39"
 
 [lib]
 proc-macro = true
