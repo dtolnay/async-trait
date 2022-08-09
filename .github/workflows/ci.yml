@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, stable, 1.46.0]
+        rust: [beta, stable, 1.51.0]
         include:
           - rust: nightly
             rustflags: --cfg async_trait_nightly_testing
