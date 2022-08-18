@@ -1,6 +1,6 @@
 #![deny(unused_must_use)]
 
-use async_trait_ext::async_trait;
+use async_trait_fn::async_trait;
 
 #[async_trait]
 trait Interface {

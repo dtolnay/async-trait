@@ -1,4 +1,4 @@
-use async_trait_ext::async_trait;
+use async_trait_fn::async_trait;
 
 struct A;
 struct B;

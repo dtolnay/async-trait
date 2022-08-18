@@ -1,6 +1,6 @@
 // https://github.com/rust-lang/rust/issues/93828
 
-use async_trait_ext::async_trait;
+use async_trait_fn::async_trait;
 
 pub trait IntoUrl {}
 
