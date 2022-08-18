@@ -45,7 +45,7 @@
 //! top of traits and trait impls that contain async fn, and then they work.
 //!
 //! ```
-//! use async_trait::async_trait;
+//! use async_trait_unboxed::async_trait;
 //!
 //! #[async_trait]
 //! trait Advertisement {
@@ -163,7 +163,7 @@
 //! error message.
 //!
 //! ```compile_fail
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //! #
 //! type Elided<'a> = &'a usize;
 //!
@@ -184,7 +184,7 @@
 //! The fix is to name the lifetime or use `'_`.
 //!
 //! ```
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //! #
 //! # type Elided<'a> = &'a usize;
 //! #
@@ -209,7 +209,7 @@
 //! by value, no associated types, etc.
 //!
 //! ```
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //! #
 //! #[async_trait]
 //! pub trait ObjectSafe {
@@ -263,7 +263,7 @@
 //! the default implementations are applicable to them:
 //!
 //! ```
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //! #
 //! #[async_trait]
 //! pub trait ObjectSafe: Sync {  // added supertrait
@@ -284,7 +284,7 @@
 //! bounding them with `Self: Sized`:
 //!
 //! ```
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //! #
 //! #[async_trait]
 //! pub trait ObjectSafe {
@@ -320,7 +320,7 @@
 //! //    generic_associated_types,
 //! //    type_alias_impl_trait
 //! // )]
-//! # use async_trait::async_trait;
+//! # use async_trait_unboxed::async_trait;
 //!
 //! #[async_trait]
 //! pub trait MyFastTrait {

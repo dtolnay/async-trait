@@ -750,7 +750,9 @@ fn contains_future_type_attr(attrs: &[Attribute]) -> FutureType {
             };
             if future_type != FutureType::Boxed {
                 let segment_len = attr.path.segments.len();
-                if segment_len != 1 && attr.path.segments[segment_len - 2].ident != "async_trait" {
+                if segment_len != 1
+                    && attr.path.segments[segment_len - 2].ident != "async_trait_unboxed"
+                {
                     return FutureType::Boxed;
                 }
                 return future_type;
