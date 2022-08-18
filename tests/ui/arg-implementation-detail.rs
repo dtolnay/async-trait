@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use async_trait_ext::async_trait;
 
 pub struct Struct;
 

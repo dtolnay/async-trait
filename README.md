@@ -1,7 +1,7 @@
-# async-trait-unboxed
+# async-trait-ext
 
-[![Cargo](https://img.shields.io/crates/v/async-trait-unboxed?style=flat-square)](https://crates.io/crates/async-trait-unboxed)
-![Crates.io](https://img.shields.io/crates/l/async-trait-unboxed?style=flat-square)
+[![Cargo](https://img.shields.io/crates/v/async-trait-ext?style=flat-square)](https://crates.io/crates/async-trait-ext)
+![Crates.io](https://img.shields.io/crates/l/async-trait-ext?style=flat-square)
 
 This is a fork of the widely acclaimed [async-trait](https://github.com/dtolnay/async-trait) crate. This crate adds two experimental attributes to [async-trait](https://github.com/dtolnay/async-trait) that can be applied to asynchronous trait methods and associated functions to avoid heap memory allocation.
 
@@ -17,7 +17,7 @@ See [async-trait](https://github.com/dtolnay/async-trait) for more details about
 `unboxed` turns an asynchronous trait method or associated function into a synchronous one returning an `impl Future<..>` by adding a generic associated type for the method or associated function.
 
 ```rust
-use async_trait_unboxed::{async_trait, unboxed_simple};
+use async_trait_ext::{async_trait, unboxed_simple};
 
 #[async_trait]
 pub trait SelfToUsize {
@@ -79,7 +79,7 @@ impl SelfToUsize for u32 {
 `unboxed_simple` is identical to `unboxed` except that it substitutes all the lifetime bounds and parameters with a single, fixed lifetime: `'async_trait`. When code around an `unboxed` attribute does not compile, `unboxed_simple` _might_ help.
 
 ```rust
-use async_trait_unboxed::{async_trait, unboxed_simple};
+use async_trait_ext::{async_trait, unboxed_simple};
 
 #[async_trait]
 pub trait AddOther {

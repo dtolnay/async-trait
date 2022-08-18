@@ -1,6 +1,6 @@
 #![deny(bare_trait_objects)]
 
-use async_trait::async_trait;
+use async_trait_ext::async_trait;
 
 #[async_trait]
 trait Trait {

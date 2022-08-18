@@ -1,15 +1,15 @@
 [package]
-name = "async-trait-unboxed"
+name = "async-trait-ext"
 version = "0.1.57"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 description = "A fork of async-trait with some useful options"
-documentation = "https://docs.rs/async-trait-unboxed"
+documentation = "https://docs.rs/async-trait-ext"
 edition = "2018"
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/wvwwvwwv/async-trait-unboxed"
+repository = "https://github.com/wvwwvwwv/async-trait-ext"
 rust-version = "1.39"
 
 [lib]
