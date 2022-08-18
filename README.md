@@ -34,7 +34,7 @@ impl SelfToUsize for u32 {
 }
 ```
 
-The above code produces the following code.
+The compiler generates the following code.
 
 ```rust
 pub trait SelfToUsize {
@@ -97,7 +97,7 @@ impl AddOther for u32 {
 
 ```
 
-The above code produces the following code; all the lifetime parameters are replaced with `'async_trait`.
+The above code expands to the following code; all the lifetime parameters are replaced with `'async_trait`.
 
 ```rust
 pub trait AddOther {
