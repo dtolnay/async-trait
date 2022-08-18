@@ -303,11 +303,13 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 //!
-//! # Experimental feature: `unboxed`
+//! # Experimental feature
+//!
+//! ### `unboxed`
 //!
 //! An `async fn` without a default implementation may get transformed into a
 //! method that returns `impl Future + Send + 'async_trait` when
-//! `#[macro@unboxed]` is invoked on both the trait and the impl blocks.
+//! `#[macro@unboxed]` is marked on both the trait and the impl blocks.
 //! `#[macro@unboxed]` requires the following unstable language features:
 //! `associated_type_bounds`, `generic_associated_types`, and
 //! `type_alias_impl_trait`.
@@ -342,11 +344,19 @@
 //! let value = MyType(1);
 //! let unboxed_future = value.cnt_fast();
 //! ```
+//!
+//! The feature is not generally applicable due to a
+//! [bug](https://github.com/rust-lang/rust/issues/95719) in the Rust type
+//! system.
+//!
+//! ### `unboxed_simple`
+//!
+//! `unboxed_simple` is identical to `unboxed` except that all the lifetime
+//! bounds in the type and parameters are substituted with a single lifetime.
 
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
-    clippy::explicit_auto_deref,
     clippy::if_not_else,
     clippy::items_after_statements,
     clippy::module_name_repetitions,
