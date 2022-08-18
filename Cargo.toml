@@ -1,7 +1,7 @@
 [package]
 name = "async-trait"
 version = "0.1.57"
-authors = ["David Tolnay <dtolnay@gmail.com>"]
+authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 description = "Type erasure for async trait methods"
 documentation = "https://docs.rs/async-trait"
@@ -9,7 +9,7 @@ edition = "2018"
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/dtolnay/async-trait"
+repository = "https://github.com/wvwwvwwv/async-trait"
 rust-version = "1.39"
 
 [lib]
