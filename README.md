@@ -50,6 +50,7 @@ pub trait SelfToUsize {
         Self: 'async_trait,
         Self: 'life0;
 }
+
 impl SelfToUsize for u32 {
     fn get<'life0, 'async_trait>(&'life0 self) -> Self::RetTypeOfGet<'life0, 'async_trait>
     where
