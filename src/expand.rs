@@ -46,25 +46,22 @@ enum FutureType {
 }
 
 impl FutureType {
-    fn is_boxed(&self) -> bool {
+    fn is_boxed(self) -> bool {
         match self {
-            FutureType::BoxedSend => true,
-            FutureType::BoxedLocal => true,
-            FutureType::UnboxedSend => false,
-            FutureType::UnboxedLocal => false,
-            FutureType::UnboxedSimpleSend => false,
-            FutureType::UnboxedSimpleLocal => false,
+            FutureType::BoxedSend | FutureType::BoxedLocal => true,
+            FutureType::UnboxedSend
+            | FutureType::UnboxedLocal
+            | FutureType::UnboxedSimpleSend
+            | FutureType::UnboxedSimpleLocal => false,
         }
     }
 
-    fn is_send(&self) -> bool {
+    fn is_send(self) -> bool {
         match self {
-            FutureType::BoxedSend => true,
-            FutureType::BoxedLocal => false,
-            FutureType::UnboxedSend => true,
-            FutureType::UnboxedLocal => false,
-            FutureType::UnboxedSimpleSend => true,
-            FutureType::UnboxedSimpleLocal => false,
+            FutureType::BoxedSend | FutureType::UnboxedSend | FutureType::UnboxedSimpleSend => true,
+            FutureType::BoxedLocal | FutureType::UnboxedLocal | FutureType::UnboxedSimpleLocal => {
+                false
+            }
         }
     }
 }
