@@ -24,15 +24,49 @@ impl ToTokens for Item {
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum FutureType {
-    /// The returned `Future` is boxed.
-    Boxed,
+    /// The returned `Future` is boxed and can be sent.
+    BoxedSend,
 
-    /// The returned `Future` is an `impl Future`.
-    Unboxed,
+    /// The returned `Future` is boxed and cannot be sent.
+    BoxedLocal,
+
+    /// The returned `Future` is an `impl Future` and can be sent.
+    UnboxedSend,
+
+    /// The returned `Future` is an `impl Future` and cannot be sent.
+    UnboxedLocal,
 
     /// The returned `Future` is an `impl Future` with the same lifetime bound for all the
     /// references and the `Future`.
-    UnboxedSimple,
+    UnboxedSimpleSend,
+
+    /// The returned `Future` is an `impl Future` with the same lifetime bound for all the
+    /// references and the `Future`. The future cannot be sent.
+    UnboxedSimpleLocal,
+}
+
+impl FutureType {
+    fn is_boxed(&self) -> bool {
+        match self {
+            FutureType::BoxedSend => true,
+            FutureType::BoxedLocal => true,
+            FutureType::UnboxedSend => false,
+            FutureType::UnboxedLocal => false,
+            FutureType::UnboxedSimpleSend => false,
+            FutureType::UnboxedSimpleLocal => false,
+        }
+    }
+
+    fn is_send(&self) -> bool {
+        match self {
+            FutureType::BoxedSend => true,
+            FutureType::BoxedLocal => false,
+            FutureType::UnboxedSend => true,
+            FutureType::UnboxedLocal => false,
+            FutureType::UnboxedSimpleSend => true,
+            FutureType::UnboxedSimpleLocal => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -78,7 +112,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let TraitItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let future_type = contains_future_type_attr(&method.attrs);
+                        let future_type = future_type_attr(&method.attrs, is_local);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
@@ -91,16 +125,9 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        let bounds = transform_sig(
-                            context,
-                            sig,
-                            &ret,
-                            has_self,
-                            has_default,
-                            is_local,
-                            future_type,
-                        );
-                        if future_type != FutureType::Boxed {
+                        let bounds =
+                            transform_sig(context, sig, &ret, has_self, has_default, future_type);
+                        if !future_type.is_boxed() {
                             let type_def = define_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_types.push(TraitItem::Type(type_def));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
@@ -138,21 +165,14 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 if let ImplItem::Method(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
-                        let future_type = contains_future_type_attr(&method.attrs);
+                        let future_type = future_type_attr(&method.attrs, is_local);
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, future_type);
-                        let bounds = transform_sig(
-                            context,
-                            sig,
-                            &ret,
-                            has_self,
-                            false,
-                            is_local,
-                            future_type,
-                        );
-                        if future_type != FutureType::Boxed {
+                        let bounds =
+                            transform_sig(context, sig, &ret, has_self, false, future_type);
+                        if !future_type.is_boxed() {
                             let type_assign = assign_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
                             generate_fn_doc(sig, &ret, &mut method.attrs);
@@ -229,7 +249,6 @@ fn transform_sig(
     ret: &TokenStream,
     has_self: bool,
     has_default: bool,
-    is_local: bool,
     future_type: FutureType,
 ) -> TokenStream {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
@@ -245,7 +264,7 @@ fn transform_sig(
         match arg {
             FnArg::Receiver(arg) => {
                 lifetimes.visit_receiver_mut(arg);
-                if future_type == FutureType::UnboxedSimple {
+                if future_type == FutureType::UnboxedSimpleSend {
                     if let Some(arg_ref) = arg.reference.as_mut() {
                         arg_ref
                             .1
@@ -255,7 +274,7 @@ fn transform_sig(
             }
             FnArg::Typed(arg) => {
                 lifetimes.visit_type_mut(&mut arg.ty);
-                if future_type == FutureType::Unboxed {
+                if future_type == FutureType::UnboxedSend {
                     if let Type::Reference(arg_ty) = &*arg.ty {
                         if let Some(lifetime) = arg_ty.lifetime.as_ref() {
                             let span = lifetime.span();
@@ -265,7 +284,7 @@ fn transform_sig(
                                 .push(parse_quote_spanned!(span=> #ty: #lifetime));
                         }
                     }
-                } else if future_type == FutureType::UnboxedSimple {
+                } else if future_type == FutureType::UnboxedSimpleSend {
                     if let Type::Reference(arg_ty) = &mut *arg.ty {
                         arg_ty
                             .lifetime
@@ -276,7 +295,7 @@ fn transform_sig(
         }
     }
 
-    if future_type == FutureType::UnboxedSimple {
+    if future_type == FutureType::UnboxedSimpleSend {
         let mut lifetime_replaced = false;
         let mut filtered_params = Vec::<Pair<GenericParam, Token![,]>>::new();
         while let Some(param) = sig.generics.params.pop() {
@@ -348,7 +367,7 @@ fn transform_sig(
         sig.generics.gt_token = Some(Token![>](sig.paren_token.span));
     }
 
-    if future_type != FutureType::UnboxedSimple {
+    if future_type != FutureType::UnboxedSimpleSend {
         for elided in lifetimes.elided {
             sig.generics.params.push(parse_quote!(#elided));
             where_clause_or_default(&mut sig.generics.where_clause)
@@ -387,11 +406,13 @@ fn transform_sig(
         };
 
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
-        where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote_spanned!(bound_span=> Self: 'async_trait)
-        } else {
-            parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
-        });
+        where_clause
+            .predicates
+            .push(if assume_bound || !future_type.is_send() {
+                parse_quote_spanned!(bound_span=> Self: 'async_trait)
+            } else {
+                parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
+            });
     }
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
@@ -415,13 +436,19 @@ fn transform_sig(
     }
 
     let ret_span = sig.ident.span();
-    let bounds = if is_local {
-        quote_spanned!(ret_span=> 'async_trait)
-    } else {
+    let bounds = if future_type.is_send() {
         quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
+    } else {
+        quote_spanned!(ret_span=> 'async_trait)
     };
 
-    if future_type != FutureType::Boxed {
+    if future_type.is_boxed() {
+        sig.output = parse_quote_spanned! {ret_span=>
+            -> ::core::pin::Pin<Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        };
+    } else {
         let implicit_type_name = derive_implicit_type_name(&sig.ident);
         let params_clone = sig.generics.params.clone();
         let params_iter = params_clone.into_iter().map(|mut p| {
@@ -440,12 +467,6 @@ fn transform_sig(
         });
         sig.output = parse_quote_spanned! {ret_span=>
             -> Self::#implicit_type_name<#(#params_iter),*>
-        };
-    } else {
-        sig.output = parse_quote_spanned! {ret_span=>
-            -> ::core::pin::Pin<Box<
-                dyn ::core::future::Future<Output = #ret> + #bounds
-            >>
         };
     }
 
@@ -566,16 +587,16 @@ fn transform_block(
         }
     };
 
-    if future_type != FutureType::Boxed {
-        let async_block = quote_spanned!(block.brace_token.span=>
-            async move { #let_ret }
-        );
-        block.stmts = parse_quote!(#async_block);
-    } else {
+    if future_type.is_boxed() {
         let box_pin = quote_spanned!(block.brace_token.span=>
             Box::pin(async move { #let_ret })
         );
         block.stmts = parse_quote!(#box_pin);
+    } else {
+        let async_block = quote_spanned!(block.brace_token.span=>
+            async move { #let_ret }
+        );
+        block.stmts = parse_quote!(#async_block);
     }
 }
 
@@ -737,29 +758,29 @@ fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool
     }
 }
 
-/// Checks if the method attributes specify the type of `Future`.
+/// Determines the type of the `Future`.
 ///
 /// If none found, the `Future` is boxed.
-fn contains_future_type_attr(attrs: &[Attribute]) -> FutureType {
+fn future_type_attr(attrs: &[Attribute], is_local: bool) -> FutureType {
     for attr in attrs {
         if let Some(last_seg) = attr.path.segments.last() {
-            let future_type = match last_seg.ident.to_string().as_str() {
-                "unboxed" => FutureType::Unboxed,
-                "unboxed_simple" => FutureType::UnboxedSimple,
-                _ => FutureType::Boxed,
+            let future_type = match (last_seg.ident.to_string().as_str(), is_local) {
+                ("unboxed", false) => Some(FutureType::UnboxedSend),
+                ("unboxed", true) => Some(FutureType::UnboxedLocal),
+                ("unboxed_simple", false) => Some(FutureType::UnboxedSimpleSend),
+                ("unboxed_simple", true) => Some(FutureType::UnboxedSimpleLocal),
+                _ => None,
             };
-            if future_type != FutureType::Boxed {
-                let segment_len = attr.path.segments.len();
-                if segment_len != 1
-                    && attr.path.segments[segment_len - 2].ident != "async_trait_fn"
-                {
-                    return FutureType::Boxed;
-                }
+            if let Some(future_type) = future_type {
                 return future_type;
             }
         }
     }
-    FutureType::Boxed
+    if is_local {
+        FutureType::BoxedLocal
+    } else {
+        FutureType::BoxedSend
+    }
 }
 
 fn where_clause_or_default(clause: &mut Option<WhereClause>) -> &mut WhereClause {

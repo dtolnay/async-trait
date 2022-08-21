@@ -262,7 +262,7 @@ pub mod unboxed {
         /// # Panics
         ///
         /// None.
-        #[async_trait_fn::unboxed]
+        #[unboxed]
         async fn add_u8(&self, u: u8) -> usize;
 
         async fn add_u8_1_wrap(&self) -> usize;
