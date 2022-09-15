@@ -13,9 +13,8 @@ note: the lint level is defined here
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-11 - impl Trait for Send + Sync {
-11 + impl Trait for dyn Send + Sync {
-   |
+11 | impl Trait for dyn Send + Sync {
+   |                +++
 help: alternatively use a blanket implementation to implement `Trait` for all types that also implement `Send + Sync`
    |
 11 | impl<T: Send + Sync> Trait for T {
