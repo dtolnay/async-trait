@@ -1,11 +1,6 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(
-        associated_type_bounds,
-        generic_associated_types,
-        min_specialization,
-        type_alias_impl_trait,
-    )
+    feature(associated_type_bounds, min_specialization, type_alias_impl_trait,)
 )]
 #![allow(
     clippy::let_underscore_drop,
