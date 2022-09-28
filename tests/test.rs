@@ -508,8 +508,8 @@ pub mod unboxed_dep {
         }
     }
 
-    /* Since `O` is now generic, the compiler cannot determine whether
-     * `self.0.go()` borrows `self` or not, thus emitting a compile error.
+    // Error: could not prove `for<'a> impl for<'a> futures::Future<Output = Option<usize>>: std::marker::Send`
+    /*
     struct Z<O: Owner>(O);
     impl<O: Owner> Z<O> {
         async fn test(&mut self) -> Option<usize> {
@@ -528,7 +528,7 @@ pub mod unboxed_dep {
     fn test() {
         let mut w: W = W(O(1));
         assert_eq!(run(w.test()), Some(0));
-        /* compile_fail.
+        /*
         let mut z: Z<O> = Z(O(1));
         assert_eq!(run(z.test()), Some(0));
         */
