@@ -1,0 +1,32 @@
+error[E0277]: the trait bound `Pin<Box<dyn Future<Output = ()> + Send>>: Trait` is not satisfied
+  --> tests/ui/sync.rs:17:10
+   |
+17 |     test(A.method());
+   |     ---- ^^^^^^^^^^ the trait `Trait` is not implemented for `Pin<Box<dyn Future<Output = ()> + Send>>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Trait` is implemented for `A`
+note: required by a bound in `test`
+  --> tests/ui/sync.rs:16:31
+   |
+16 |     fn test<T>(a: T) where T: Trait + Send + Sync  {}
+   |                               ^^^^^ required by this bound in `test`
+
+error[E0277]: `dyn Future<Output = ()> + Send` cannot be shared between threads safely
+  --> tests/ui/sync.rs:17:10
+   |
+17 |     test(A.method());
+   |     ---- ^^^^^^^^^^ `dyn Future<Output = ()> + Send` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Sync` is not implemented for `dyn Future<Output = ()> + Send`
+   = note: required for `Unique<dyn Future<Output = ()> + Send>` to implement `Sync`
+   = note: required because it appears within the type `Box<dyn Future<Output = ()> + Send>`
+   = note: required because it appears within the type `Pin<Box<dyn Future<Output = ()> + Send>>`
+note: required by a bound in `test`
+  --> tests/ui/sync.rs:16:46
+   |
+16 |     fn test<T>(a: T) where T: Trait + Send + Sync  {}
+   |                                              ^^^^ required by this bound in `test`

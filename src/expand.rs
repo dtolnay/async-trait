@@ -53,7 +53,7 @@ impl Context<'_> {
 
 type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
-pub fn expand(input: &mut Item, is_local: bool) {
+pub fn expand(input: &mut Item, is_local: bool, is_sync: bool) {
     match input {
         Item::Trait(input) => {
             let context = Context::Trait {
@@ -75,7 +75,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                             method.attrs.push(lint_suppress_without_body());
                         }
                         let has_default = method.default.is_some();
-                        transform_sig(context, sig, has_self, has_default, is_local);
+                        transform_sig(context, sig, has_self, has_default, is_local, is_sync);
                     }
                 }
             }
@@ -108,7 +108,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block);
-                        transform_sig(context, sig, has_self, false, is_local);
+                        transform_sig(context, sig, has_self, false, is_local, is_sync);
                         method.attrs.push(lint_suppress_with_body());
                     }
                 }
@@ -158,6 +158,7 @@ fn transform_sig(
     has_self: bool,
     has_default: bool,
     is_local: bool,
+    is_sync: bool,
 ) {
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
@@ -292,7 +293,11 @@ fn transform_sig(
     let bounds = if is_local {
         quote_spanned!(ret_span=> 'async_trait)
     } else {
-        quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
+        if is_sync {
+            quote_spanned!(ret_span=> ::core::marker::Send + ::core::marker::Sync + 'async_trait)
+        } else {
+            quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
+        }
     };
     sig.output = parse_quote_spanned! {ret_span=>
         -> ::core::pin::Pin<Box<

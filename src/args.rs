@@ -5,10 +5,12 @@ use syn::Token;
 #[derive(Copy, Clone)]
 pub struct Args {
     pub local: bool,
+    pub sync: bool,
 }
 
 mod kw {
     syn::custom_keyword!(Send);
+    syn::custom_keyword!(Sync);
 }
 
 impl Parse for Args {
@@ -24,9 +26,22 @@ fn try_parse(input: ParseStream) -> Result<Args> {
     if input.peek(Token![?]) {
         input.parse::<Token![?]>()?;
         input.parse::<kw::Send>()?;
-        Ok(Args { local: true })
+        Ok(Args {
+            local: true,
+            sync: false,
+        })
+    } else if input.peek(Token![+]) {
+        input.parse::<Token![+]>()?;
+        input.parse::<kw::Sync>()?;
+        Ok(Args {
+            local: false,
+            sync: true,
+        })
     } else {
-        Ok(Args { local: false })
+        Ok(Args {
+            local: false,
+            sync: false,
+        })
     }
 }
 

@@ -334,6 +334,6 @@ use syn::parse_macro_input;
 pub fn async_trait(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let mut item = parse_macro_input!(input as Item);
-    expand(&mut item, args.local);
+    expand(&mut item, args.local, args.sync);
     TokenStream::from(quote!(#item))
 }

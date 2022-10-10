@@ -1451,3 +1451,32 @@ pub mod issue204 {
         async fn g(arg: *const impl Trait);
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/77
+pub mod issue77 {
+    use async_trait::async_trait;
+
+    #[async_trait(+Sync)]
+    pub trait Trait {
+        async fn f(&self);
+    }
+
+    struct A;
+
+    #[async_trait(+Sync)]
+    impl Trait for A {
+        async fn f(&self) {}
+    }
+
+    #[test]
+    fn test() {
+        fn inner_test<T>(_: T)
+        where
+            T: Send + Sync,
+        {
+        }
+
+        let fut = A.f();
+        inner_test(fut);
+    }
+}
