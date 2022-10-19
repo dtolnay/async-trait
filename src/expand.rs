@@ -404,7 +404,6 @@ fn transform_sig(
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
         where_clause
             .predicates
-            .predicates
             .push(if assume_bound || !future_type.is_send() {
                 parse_quote_spanned!(default_span=> Self: 'async_trait)
             } else {
