@@ -248,13 +248,13 @@ fn transform_sig(
     has_default: bool,
     future_type: FutureType,
 ) -> TokenStream {
-    sig.fn_token.span = sig.asyncness.take().unwrap().span;
+    let default_span = sig.asyncness.take().unwrap().span;
+    sig.fn_token.span = default_span;
 
-    let default_span = sig
-        .ident
-        .span()
-        .join(sig.paren_token.span)
-        .unwrap_or_else(|| sig.ident.span());
+    let (ret_arrow, ret) = match &sig.output {
+        ReturnType::Default => (Token![->](default_span), quote_spanned!(default_span=> ())),
+        ReturnType::Type(arrow, ret) => (*arrow, quote!(#ret)),
+    };
 
     let mut lifetimes = CollectLifetimes::new("'life", default_span);
     for arg in sig.inputs.iter_mut() {
@@ -377,13 +377,12 @@ fn transform_sig(
     }
 
     if has_self {
-        let bound_span = sig.ident.span();
         let bound = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => Ident::new("Sync", bound_span),
+            })) => Ident::new("Sync", default_span),
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -392,9 +391,9 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                Ident::new("Sync", bound_span)
+                Ident::new("Sync", default_span)
             }
-            _ => Ident::new("Send", bound_span),
+            _ => Ident::new("Send", default_span),
         };
 
         let assume_bound = match context {
@@ -405,10 +404,11 @@ fn transform_sig(
         let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
         where_clause
             .predicates
+            .predicates
             .push(if assume_bound || !future_type.is_send() {
-                parse_quote_spanned!(bound_span=> Self: 'async_trait)
+                parse_quote_spanned!(default_span=> Self: 'async_trait)
             } else {
-                parse_quote_spanned!(bound_span=> Self: ::core::marker::#bound + 'async_trait)
+                parse_quote_spanned!(default_span=> Self: ::core::marker::#bound + 'async_trait)
             });
     }
 
@@ -432,16 +432,15 @@ fn transform_sig(
         }
     }
 
-    let ret_span = sig.ident.span();
     let bounds = if future_type.is_send() {
-        quote_spanned!(ret_span=> ::core::marker::Send + 'async_trait)
+        quote_spanned!(default_span=> ::core::marker::Send + 'async_trait)
     } else {
-        quote_spanned!(ret_span=> 'async_trait)
+        quote_spanned!(default_span=> 'async_trait)
     };
 
     if future_type.is_boxed() {
-        sig.output = parse_quote_spanned! {ret_span=>
-            -> ::core::pin::Pin<Box<
+        sig.output = parse_quote_spanned! {default_span=>
+            #ret_arrow ::core::pin::Pin<Box<
                 dyn ::core::future::Future<Output = #ret> + #bounds
             >>
         };
@@ -462,8 +461,8 @@ fn transform_sig(
             };
             p
         });
-        sig.output = parse_quote_spanned! {ret_span=>
-            -> Self::#implicit_type_name<#(#params_iter),*>
+        sig.output = parse_quote_spanned! {default_span=>
+            #ret_arrow Self::#implicit_type_name<#(#params_iter),*>
         };
     }
 
