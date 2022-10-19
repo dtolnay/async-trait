@@ -123,7 +123,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         }
                         let has_default = method.default.is_some();
                         let bounds =
-                            transform_sig(context, sig, &ret, has_self, has_default, future_type);
+                            transform_sig(context, sig, has_self, has_default, future_type);
                         if !future_type.is_boxed() {
                             let type_def = define_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_types.push(TraitItem::Type(type_def));
@@ -167,8 +167,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
                         transform_block(context, sig, block, future_type);
-                        let bounds =
-                            transform_sig(context, sig, &ret, has_self, false, future_type);
+                        let bounds = transform_sig(context, sig, has_self, false, future_type);
                         if !future_type.is_boxed() {
                             let type_assign = assign_implicit_associated_type(sig, &ret, &bounds);
                             implicit_associated_type_assigns.push(ImplItem::Type(type_assign));
@@ -243,7 +242,6 @@ fn lint_suppress_without_body() -> Attribute {
 fn transform_sig(
     context: Context,
     sig: &mut Signature,
-    ret: &TokenStream,
     has_self: bool,
     has_default: bool,
     future_type: FutureType,
