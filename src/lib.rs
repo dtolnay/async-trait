@@ -17,15 +17,10 @@
 //! method that returns `impl Future + Send + 'async_trait` when
 //! `#[macro@unboxed]` is marked on both the trait and the impl blocks.
 //! `#[macro@unboxed]` requires the following unstable language features:
-//! `associated_type_bounds`, `generic_associated_types`, and
-//! `type_alias_impl_trait`.
+//! `associated_type_bounds` and `type_alias_impl_trait`.
 //!
 //! ```ignore
-//! // #![feature(
-//! //    associated_type_bounds,
-//! //    generic_associated_types,
-//! //    type_alias_impl_trait
-//! // )]
+//! #![feature(associated_type_bounds, type_alias_impl_trait)]
 //! # use async_trait_fn::async_trait;
 //!
 //! #[async_trait]
