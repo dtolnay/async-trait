@@ -3,7 +3,6 @@
     feature(min_specialization, type_alias_impl_trait)
 )]
 #![allow(
-    clippy::let_underscore_drop,
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::missing_safety_doc,
