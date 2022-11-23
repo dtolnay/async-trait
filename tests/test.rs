@@ -3,7 +3,6 @@
     feature(associated_type_bounds, min_specialization, type_alias_impl_trait,)
 )]
 #![allow(
-    clippy::let_underscore_drop,
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::missing_safety_doc,
@@ -1379,7 +1378,7 @@ pub mod issue92 {
         const ASSOCIATED2: &'static str;
         type Associated2;
 
-        #[allow(path_statements, clippy::no_effect)]
+        #[allow(path_statements, clippy::let_underscore_future, clippy::no_effect)]
         async fn associated2(&self) {
             // trait items
             mac!(let _: Self::Associated2;);
@@ -1402,7 +1401,7 @@ pub mod issue92 {
         const ASSOCIATED2: &'static str = "2";
         type Associated2 = ();
 
-        #[allow(path_statements, clippy::no_effect)]
+        #[allow(path_statements, clippy::let_underscore_future, clippy::no_effect)]
         async fn associated2(&self) {
             // inherent items
             mac!(Self::ASSOCIATED1;);
