@@ -229,23 +229,27 @@ fn transform_sig(
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
-        let bounds = match sig.inputs.iter().next() {
+        let bounds: &[InferredBound] = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => [InferredBound::Sync],
+            })) => &[InferredBound::Sync],
             Some(FnArg::Typed(arg))
-                if match (arg.pat.as_ref(), arg.ty.as_ref()) {
-                    (Pat::Ident(pat), Type::Reference(ty)) => {
-                        pat.ident == "self" && ty.mutability.is_none()
-                    }
+                if match arg.pat.as_ref() {
+                    Pat::Ident(pat) => pat.ident == "self",
                     _ => false,
                 } =>
             {
-                [InferredBound::Sync]
+                match arg.ty.as_ref() {
+                    Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
+                    Type::Path(ty) if ty.path.segments.last().unwrap().ident == "Arc" => {
+                        &[InferredBound::Sync, InferredBound::Send]
+                    }
+                    _ => &[InferredBound::Send],
+                }
             }
-            _ => [InferredBound::Send],
+            _ => &[InferredBound::Send],
         };
 
         let bounds = bounds.iter().filter_map(|bound| {
