@@ -229,12 +229,12 @@ fn transform_sig(
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
-        let bound = match sig.inputs.iter().next() {
+        let bounds = match sig.inputs.iter().next() {
             Some(FnArg::Receiver(Receiver {
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => InferredBound::Sync,
+            })) => [InferredBound::Sync],
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -243,23 +243,30 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                InferredBound::Sync
+                [InferredBound::Sync]
             }
-            _ => InferredBound::Send,
+            _ => [InferredBound::Send],
         };
 
-        let assume_bound = match context {
-            Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, &bound),
-            Context::Impl { .. } => true,
-        };
-
-        let where_clause = where_clause_or_default(&mut sig.generics.where_clause);
-        where_clause.predicates.push(if assume_bound || is_local {
-            parse_quote_spanned!(default_span=> Self: 'async_trait)
-        } else {
-            let bound = bound.spanned_path(default_span);
-            parse_quote_spanned!(default_span=> Self: #bound + 'async_trait)
+        let bounds = bounds.iter().filter_map(|bound| {
+            let assume_bound = match context {
+                Context::Trait { supertraits, .. } => {
+                    !has_default || has_bound(supertraits, bound)
+                }
+                Context::Impl { .. } => true,
+            };
+            if assume_bound || is_local {
+                None
+            } else {
+                Some(bound.spanned_path(default_span))
+            }
         });
+
+        where_clause_or_default(&mut sig.generics.where_clause)
+            .predicates
+            .push(parse_quote_spanned! {default_span=>
+                Self: #(#bounds +)* 'async_trait
+            });
     }
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
