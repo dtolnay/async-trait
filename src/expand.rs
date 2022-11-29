@@ -257,8 +257,8 @@ fn transform_sig(
         where_clause.predicates.push(if assume_bound || is_local {
             parse_quote_spanned!(default_span=> Self: 'async_trait)
         } else {
-            let bound = bound.spanned_ident(default_span);
-            parse_quote_spanned!(default_span=> Self: ::core::marker::#bound + 'async_trait)
+            let bound = bound.spanned_path(default_span);
+            parse_quote_spanned!(default_span=> Self: #bound + 'async_trait)
         });
     }
 

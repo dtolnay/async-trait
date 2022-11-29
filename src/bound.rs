@@ -1,4 +1,5 @@
-use proc_macro2::{Ident, Span};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::quote_spanned;
 use syn::punctuated::Punctuated;
 use syn::{Token, TypeParamBound};
 
@@ -34,8 +35,9 @@ impl InferredBound {
         }
     }
 
-    pub fn spanned_ident(&self, span: Span) -> Ident {
-        Ident::new(self.as_str(), span)
+    pub fn spanned_path(&self, span: Span) -> TokenStream {
+        let ident = Ident::new(self.as_str(), span);
+        quote_spanned!(span=> ::core::marker::#ident)
     }
 }
 
