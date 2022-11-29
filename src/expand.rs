@@ -250,9 +250,7 @@ fn transform_sig(
 
         let bounds = bounds.iter().filter_map(|bound| {
             let assume_bound = match context {
-                Context::Trait { supertraits, .. } => {
-                    !has_default || has_bound(supertraits, bound)
-                }
+                Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, bound),
                 Context::Impl { .. } => true,
             };
             if assume_bound || is_local {
