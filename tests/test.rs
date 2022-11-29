@@ -1450,3 +1450,14 @@ pub mod issue204 {
         async fn g(arg: *const impl Trait);
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/210
+pub mod issue210 {
+    use async_trait::async_trait;
+    use std::sync::Arc;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(self: Arc<Self>) {}
+    }
+}
