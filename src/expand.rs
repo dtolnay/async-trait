@@ -1,3 +1,4 @@
+use crate::bound::{has_bound, InferredBound, Supertraits};
 use crate::lifetime::{AddLifetimeToImplTrait, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
@@ -10,7 +11,7 @@ use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericParam, Generics, Ident,
     ImplItem, Lifetime, LifetimeDef, Pat, PatIdent, Receiver, ReturnType, Signature, Stmt, Token,
-    TraitItem, Type, TypeParamBound, TypePath, WhereClause,
+    TraitItem, Type, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -50,8 +51,6 @@ impl Context<'_> {
         })
     }
 }
-
-type Supertraits = Punctuated<TypeParamBound, Token![+]>;
 
 pub fn expand(input: &mut Item, is_local: bool) {
     match input {
@@ -235,7 +234,7 @@ fn transform_sig(
                 reference: Some(_),
                 mutability: None,
                 ..
-            })) => Ident::new("Sync", default_span),
+            })) => InferredBound::Sync,
             Some(FnArg::Typed(arg))
                 if match (arg.pat.as_ref(), arg.ty.as_ref()) {
                     (Pat::Ident(pat), Type::Reference(ty)) => {
@@ -244,9 +243,9 @@ fn transform_sig(
                     _ => false,
                 } =>
             {
-                Ident::new("Sync", default_span)
+                InferredBound::Sync
             }
-            _ => Ident::new("Send", default_span),
+            _ => InferredBound::Send,
         };
 
         let assume_bound = match context {
@@ -258,6 +257,7 @@ fn transform_sig(
         where_clause.predicates.push(if assume_bound || is_local {
             parse_quote_spanned!(default_span=> Self: 'async_trait)
         } else {
+            let bound = bound.spanned_ident(default_span);
             parse_quote_spanned!(default_span=> Self: ::core::marker::#bound + 'async_trait)
         });
     }
@@ -400,23 +400,6 @@ fn positional_arg(i: usize, pat: &Pat) -> Ident {
     #[cfg(not(no_span_mixed_site))]
     let span = span.resolved_at(Span::mixed_site());
     format_ident!("__arg{}", i, span = span)
-}
-
-fn has_bound(supertraits: &Supertraits, marker: &Ident) -> bool {
-    for bound in supertraits {
-        if let TypeParamBound::Trait(bound) = bound {
-            if bound.path.is_ident(marker)
-                || bound.path.segments.len() == 3
-                    && (bound.path.segments[0].ident == "std"
-                        || bound.path.segments[0].ident == "core")
-                    && bound.path.segments[1].ident == "marker"
-                    && bound.path.segments[2].ident == *marker
-            {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 fn contains_associated_type_impl_trait(context: Context, ret: &mut Type) -> bool {
