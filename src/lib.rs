@@ -70,6 +70,7 @@
 extern crate proc_macro;
 
 mod args;
+mod bound;
 mod expand;
 mod lifetime;
 mod parse;
