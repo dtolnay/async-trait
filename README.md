@@ -1,7 +1,7 @@
 # async-trait-fn
 
-[![Cargo](https://img.shields.io/crates/v/async-trait-fn?style=flat-square)](https://crates.io/crates/async-trait-fn)
-![Crates.io](https://img.shields.io/crates/l/async-trait-fn?style=flat-square)
+[![Cargo](https://img.shields.io/crates/v/async-trait-fn)](https://crates.io/crates/async-trait-fn)
+![Crates.io](https://img.shields.io/crates/l/async-trait-fn)
 
 This is a fork of the widely acclaimed [async-trait](https://github.com/dtolnay/async-trait) crate. This crate adds two experimental attributes to [async-trait](https://github.com/dtolnay/async-trait) that can be applied to asynchronous trait methods and associated functions to avoid heap memory allocation.
 
