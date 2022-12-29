@@ -10,6 +10,9 @@
     clippy::trivially_copy_pass_by_ref,
     clippy::unused_async
 )]
+// Temporarily suppressed due to rustc regression.
+// https://github.com/rust-lang/rust/issues/106247
+#![allow(where_clauses_object_safety)]
 
 use async_trait::async_trait;
 
