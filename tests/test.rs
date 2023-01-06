@@ -54,6 +54,10 @@ trait Trait {
     async fn calls_mut(&mut self) {
         self.selfmut().await;
     }
+
+    async fn cfg_param(&self, param: u8);
+    async fn cfg_param_wildcard(&self, _: u8);
+    async fn cfg_param_tuple(&self, (left, right): (u8, u8));
 }
 
 struct Struct;
@@ -86,6 +90,17 @@ impl Trait for Struct {
 
     async fn calls_mut(&mut self) {
         self.selfmut().await;
+    }
+
+    async fn cfg_param(&self, #[cfg(any())] param: u8, #[cfg(all())] _unused: u8) {}
+
+    async fn cfg_param_wildcard(&self, #[cfg(any())] _: u8, #[cfg(all())] _: u8) {}
+
+    async fn cfg_param_tuple(
+        &self,
+        #[cfg(any())] (left, right): (u8, u8),
+        #[cfg(all())] (_left, _right): (u8, u8),
+    ) {
     }
 }
 
