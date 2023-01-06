@@ -362,6 +362,12 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                 quote!(let #mutability #ident = #self_token;)
             }
             FnArg::Typed(arg) => {
+                // If there is a `#[cfg(..)]` attribute that selectively
+                // enables the parameter, forward it to the variable.
+                //
+                // This is currently not applied to the `self` parameter
+                let attrs = arg.attrs.iter();
+
                 if let Pat::Ident(PatIdent {
                     ident, mutability, ..
                 }) = &*arg.pat
@@ -371,15 +377,24 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                         let prefixed = Ident::new("__self", ident.span());
                         quote!(let #mutability #prefixed = #ident;)
                     } else {
-                        quote!(let #mutability #ident = #ident;)
+                        quote!(
+                            #(#attrs)*
+                            let #mutability #ident = #ident;
+                        )
                     }
                 } else {
                     let pat = &arg.pat;
                     let ident = positional_arg(i, pat);
                     if let Pat::Wild(_) = **pat {
-                        quote!(let #ident = #ident;)
+                        quote!(
+                            #(#attrs)*
+                            let #ident = #ident;
+                        )
                     } else {
-                        quote!(let #pat = #ident;)
+                        quote!(
+                            #(#attrs)*
+                            let #pat = #ident;
+                        )
                     }
                 }
             }
