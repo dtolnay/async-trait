@@ -1929,7 +1929,7 @@ pub mod issue210 {
 
 // https://github.com/dtolnay/async-trait/issues/226
 pub mod issue226 {
-    use async_trait::async_trait;
+    use async_trait_fn::async_trait;
 
     #[async_trait]
     pub trait Trait {
