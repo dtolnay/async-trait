@@ -10,9 +10,6 @@
     clippy::trivially_copy_pass_by_ref,
     clippy::unused_async
 )]
-// Temporarily suppressed due to rustc regression.
-// https://github.com/rust-lang/rust/issues/106247
-#![allow(where_clauses_object_safety)]
 
 use async_trait_fn::async_trait;
 
@@ -1927,5 +1924,33 @@ pub mod issue210 {
     #[async_trait]
     pub trait Trait {
         async fn f(self: Arc<Self>) {}
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/226
+pub mod issue226 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn cfg_param(&self, param: u8);
+        async fn cfg_param_wildcard(&self, _: u8);
+        async fn cfg_param_tuple(&self, (left, right): (u8, u8));
+    }
+
+    struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn cfg_param(&self, #[cfg(any())] param: u8, #[cfg(all())] _unused: u8) {}
+
+        async fn cfg_param_wildcard(&self, #[cfg(any())] _: u8, #[cfg(all())] _: u8) {}
+
+        async fn cfg_param_tuple(
+            &self,
+            #[cfg(any())] (left, right): (u8, u8),
+            #[cfg(all())] (_left, _right): (u8, u8),
+        ) {
+        }
     }
 }
