@@ -137,7 +137,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 .for_each(|t| input.items.push(t));
         }
         Item::Impl(input) => {
-            let mut lifetimes = CollectLifetimes::new("'impl", input.impl_token.span);
+            let mut lifetimes = CollectLifetimes::new("'impl");
             lifetimes.visit_type_mut(&mut *input.self_ty);
             lifetimes.visit_path_mut(&mut input.trait_.as_mut().unwrap().1);
             let params = &input.generics.params;
@@ -254,7 +254,7 @@ fn transform_sig(
         ReturnType::Type(arrow, ret) => (*arrow, quote!(#ret)),
     };
 
-    let mut lifetimes = CollectLifetimes::new("'life", default_span);
+    let mut lifetimes = CollectLifetimes::new("'life");
     for arg in sig.inputs.iter_mut() {
         match arg {
             FnArg::Receiver(arg) => {
