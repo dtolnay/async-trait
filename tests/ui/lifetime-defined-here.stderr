@@ -2,13 +2,17 @@ error: lifetime may not live long enough
   --> tests/ui/lifetime-defined-here.rs:12:49
    |
 12 |     async fn bar(&self, x: &str, y: &'_ str) -> &'static str {
-   |     ----- lifetime `'life0` defined here        ^^^^^^^^^^^^ type annotation requires that `'life0` must outlive `'static`
+   |                  -                              ^^^^^^^^^^^^ type annotation requires that `'life0` must outlive `'static`
+   |                  |
+   |                  lifetime `'life0` defined here
 
 error: lifetime may not live long enough
   --> tests/ui/lifetime-defined-here.rs:12:49
    |
 12 |     async fn bar(&self, x: &str, y: &'_ str) -> &'static str {
-   |     ----- lifetime `'life1` defined here        ^^^^^^^^^^^^ type annotation requires that `'life1` must outlive `'static`
+   |                            -                    ^^^^^^^^^^^^ type annotation requires that `'life1` must outlive `'static`
+   |                            |
+   |                            lifetime `'life1` defined here
 
 error: lifetime may not live long enough
   --> tests/ui/lifetime-defined-here.rs:12:49
