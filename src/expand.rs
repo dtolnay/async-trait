@@ -297,10 +297,16 @@ fn transform_sig(
             }) => {}
             FnArg::Receiver(arg) => arg.mutability = None,
             FnArg::Typed(arg) => {
-                if let Pat::Ident(ident) = &mut *arg.pat {
-                    ident.by_ref = None;
-                    ident.mutability = None;
-                } else {
+                let type_is_reference = match *arg.ty {
+                    Type::Reference(_) => true,
+                    _ => false,
+                };
+                if let Pat::Ident(pat) = &mut *arg.pat {
+                    if pat.ident == "self" || !type_is_reference {
+                        pat.by_ref = None;
+                        pat.mutability = None;
+                    }
+                } else if !type_is_reference {
                     let positional = positional_arg(i, &arg.pat);
                     let m = mut_pat(&mut arg.pat);
                     arg.pat = parse_quote!(#m #positional);
@@ -376,12 +382,16 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                         self_span = Some(ident.span());
                         let prefixed = Ident::new("__self", ident.span());
                         quote!(let #mutability #prefixed = #ident;)
+                    } else if let Type::Reference(_) = *arg.ty {
+                        quote!()
                     } else {
                         quote! {
                             #(#attrs)*
                             let #mutability #ident = #ident;
                         }
                     }
+                } else if let Type::Reference(_) = *arg.ty {
+                    quote!()
                 } else {
                     let pat = &arg.pat;
                     let ident = positional_arg(i, pat);
