@@ -403,7 +403,10 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                     } else {
                         quote! {
                             #(#attrs)*
-                            let #pat = #ident;
+                            let #pat = {
+                                let #ident = #ident;
+                                #ident
+                            };
                         }
                     }
                 }
