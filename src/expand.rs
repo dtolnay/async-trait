@@ -119,6 +119,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
 fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
+            clippy::async_yields_async,
             clippy::let_unit_value,
             clippy::no_effect_underscore_binding,
             clippy::shadow_same,
