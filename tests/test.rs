@@ -1556,3 +1556,31 @@ pub mod issue234 {
         async fn f(Tuple { 1: _int, .. }: Tuple<Droppable, i32>) {}
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/236
+pub mod issue236 {
+    #![deny(clippy::async_yields_async)]
+    #![allow(clippy::manual_async_fn)]
+
+    use async_trait::async_trait;
+    use std::future::{self, Future, Ready};
+
+    // Does not trigger the lint.
+    pub async fn async_fn() -> Ready<()> {
+        future::ready(())
+    }
+
+    #[allow(clippy::async_yields_async)]
+    pub fn impl_future_fn() -> impl Future<Output = Ready<()>> {
+        async { future::ready(()) }
+    }
+
+    // The async_trait attribute turns the former into the latter, so we make it
+    // put its own allow(async_yeilds_async) to remain consistent with async fn.
+    #[async_trait]
+    pub trait Trait {
+        async fn f() -> Ready<()> {
+            future::ready(())
+        }
+    }
+}
