@@ -9,7 +9,7 @@ edition = "2018"
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/dtolnay/async-trait"
-rust-version = "1.39"
+rust-version = "1.56"
 
 [lib]
 proc-macro = true
@@ -17,7 +17,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0.96", features = ["full", "visit-mut"] }
+syn = { version = "2.0", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 futures = "0.3"

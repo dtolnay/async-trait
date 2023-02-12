@@ -10,7 +10,7 @@ use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericArgument, GenericParam,
-    Generics, Ident, ImplItem, Lifetime, LifetimeDef, Pat, PatIdent, PathArguments, Receiver,
+    Generics, Ident, ImplItem, Lifetime, LifetimeParam, Pat, PatIdent, PathArguments, Receiver,
     ReturnType, Signature, Stmt, Token, TraitItem, Type, TypePath, WhereClause,
 };
 
@@ -36,7 +36,7 @@ enum Context<'a> {
 }
 
 impl Context<'_> {
-    fn lifetimes<'a>(&'a self, used: &'a [Lifetime]) -> impl Iterator<Item = &'a LifetimeDef> {
+    fn lifetimes<'a>(&'a self, used: &'a [Lifetime]) -> impl Iterator<Item = &'a LifetimeParam> {
         let generics = match self {
             Context::Trait { generics, .. } => generics,
             Context::Impl { impl_generics, .. } => impl_generics,
@@ -60,7 +60,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 supertraits: &input.supertraits,
             };
             for inner in &mut input.items {
-                if let TraitItem::Method(method) = inner {
+                if let TraitItem::Fn(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         let block = &mut method.default;
@@ -94,7 +94,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 associated_type_impl_traits: &associated_type_impl_traits,
             };
             for inner in &mut input.items {
-                if let ImplItem::Method(method) = inner {
+                if let ImplItem::Fn(method) = inner {
                     let sig = &mut method.sig;
                     if sig.asyncness.is_some() {
                         let block = &mut method.block;
@@ -208,7 +208,7 @@ fn transform_sig(
         sig.generics.lt_token = Some(Token![<](sig.ident.span()));
     }
     if sig.generics.gt_token.is_none() {
-        sig.generics.gt_token = Some(Token![>](sig.paren_token.span));
+        sig.generics.gt_token = Some(Token![>](sig.paren_token.span.join()));
     }
 
     for elided in lifetimes.elided {
@@ -223,46 +223,35 @@ fn transform_sig(
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
-        let bounds: &[InferredBound] = match sig.inputs.iter().next() {
-            Some(FnArg::Receiver(Receiver {
-                reference: Some(_),
-                mutability: None,
-                ..
-            })) => &[InferredBound::Sync],
-            Some(FnArg::Typed(arg))
-                if match arg.pat.as_ref() {
-                    Pat::Ident(pat) => pat.ident == "self",
-                    _ => false,
-                } =>
-            {
-                match arg.ty.as_ref() {
-                    // self: &Self
-                    Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
-                    // self: Arc<Self>
-                    Type::Path(ty)
-                        if {
-                            let segment = ty.path.segments.last().unwrap();
-                            segment.ident == "Arc"
-                                && match &segment.arguments {
-                                    PathArguments::AngleBracketed(arguments) => {
-                                        arguments.args.len() == 1
-                                            && match &arguments.args[0] {
-                                                GenericArgument::Type(Type::Path(arg)) => {
-                                                    arg.path.is_ident("Self")
-                                                }
-                                                _ => false,
+        let bounds: &[InferredBound] = if let Some(receiver) = sig.receiver() {
+            match receiver.ty.as_ref() {
+                // self: &Self
+                Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
+                // self: Arc<Self>
+                Type::Path(ty)
+                    if {
+                        let segment = ty.path.segments.last().unwrap();
+                        segment.ident == "Arc"
+                            && match &segment.arguments {
+                                PathArguments::AngleBracketed(arguments) => {
+                                    arguments.args.len() == 1
+                                        && match &arguments.args[0] {
+                                            GenericArgument::Type(Type::Path(arg)) => {
+                                                arg.path.is_ident("Self")
                                             }
-                                    }
-                                    _ => false,
+                                            _ => false,
+                                        }
                                 }
-                        } =>
-                    {
-                        &[InferredBound::Sync, InferredBound::Send]
-                    }
-                    _ => &[InferredBound::Send],
+                                _ => false,
+                            }
+                    } =>
+                {
+                    &[InferredBound::Sync, InferredBound::Send]
                 }
+                _ => &[InferredBound::Send],
             }
-            _ => &[InferredBound::Send],
+        } else {
+            &[InferredBound::Send]
         };
 
         let bounds = bounds.iter().filter_map(|bound| {
@@ -286,24 +275,24 @@ fn transform_sig(
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
         match arg {
-            FnArg::Receiver(Receiver {
-                reference: Some(_), ..
-            }) => {}
-            FnArg::Receiver(arg) => arg.mutability = None,
+            FnArg::Receiver(receiver) => {
+                if receiver.reference.is_none() {
+                    receiver.mutability = None;
+                }
+            }
             FnArg::Typed(arg) => {
-                let type_is_reference = match *arg.ty {
-                    Type::Reference(_) => true,
-                    _ => false,
-                };
-                if let Pat::Ident(pat) = &mut *arg.pat {
-                    if pat.ident == "self" || !type_is_reference {
+                if match *arg.ty {
+                    Type::Reference(_) => false,
+                    _ => true,
+                } {
+                    if let Pat::Ident(pat) = &mut *arg.pat {
                         pat.by_ref = None;
                         pat.mutability = None;
+                    } else {
+                        let positional = positional_arg(i, &arg.pat);
+                        let m = mut_pat(&mut arg.pat);
+                        arg.pat = parse_quote!(#m #positional);
                     }
-                } else if !type_is_reference {
-                    let positional = positional_arg(i, &arg.pat);
-                    let m = mut_pat(&mut arg.pat);
-                    arg.pat = parse_quote!(#m #positional);
                 }
                 AddLifetimeToImplTrait.visit_type_mut(&mut arg.ty);
             }
@@ -366,26 +355,18 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                 // the parameter, forward it to the variable.
                 //
                 // This is currently not applied to the `self` parameter.
-                let attrs = arg.attrs.iter().filter(|attr| attr.path.is_ident("cfg"));
+                let attrs = arg.attrs.iter().filter(|attr| attr.path().is_ident("cfg"));
 
-                if let Pat::Ident(PatIdent {
+                if let Type::Reference(_) = *arg.ty {
+                    quote!()
+                } else if let Pat::Ident(PatIdent {
                     ident, mutability, ..
                 }) = &*arg.pat
                 {
-                    if ident == "self" {
-                        self_span = Some(ident.span());
-                        let prefixed = Ident::new("__self", ident.span());
-                        quote!(let #mutability #prefixed = #ident;)
-                    } else if let Type::Reference(_) = *arg.ty {
-                        quote!()
-                    } else {
-                        quote! {
-                            #(#attrs)*
-                            let #mutability #ident = #ident;
-                        }
+                    quote! {
+                        #(#attrs)*
+                        let #mutability #ident = #ident;
                     }
-                } else if let Type::Reference(_) = *arg.ty {
-                    quote!()
                 } else {
                     let pat = &arg.pat;
                     let ident = positional_arg(i, pat);
