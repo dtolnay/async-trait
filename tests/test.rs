@@ -4,6 +4,7 @@
 )]
 #![deny(rust_2021_compatibility)]
 #![allow(
+    clippy::let_underscore_untyped,
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::missing_safety_doc,
