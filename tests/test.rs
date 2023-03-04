@@ -1585,3 +1585,22 @@ pub mod issue236 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/238
+pub mod issue238 {
+    #![deny(single_use_lifetimes)]
+
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f();
+    }
+
+    pub struct Struct;
+
+    #[async_trait]
+    impl Trait for &Struct {
+        async fn f() {}
+    }
+}
