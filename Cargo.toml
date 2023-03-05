@@ -1,6 +1,6 @@
 [package]
 name = "async-trait-fn"
-version = "0.1.64"
+version = "0.1.65"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 description = "A fork of async-trait with some useful options"
