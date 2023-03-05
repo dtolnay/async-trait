@@ -9,15 +9,13 @@ use syn::{
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
-    pub name: &'static str,
 }
 
 impl CollectLifetimes {
-    pub fn new(name: &'static str) -> Self {
+    pub fn new() -> Self {
         CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
-            name,
         }
     }
 
@@ -37,7 +35,7 @@ impl CollectLifetimes {
     }
 
     fn next_lifetime(&mut self, span: Span) -> Lifetime {
-        let name = format!("{}{}", self.name, self.elided.len());
+        let name = format!("'life{}", self.elided.len());
         let life = Lifetime::new(&name, span);
         self.elided.push(life.clone());
         life
