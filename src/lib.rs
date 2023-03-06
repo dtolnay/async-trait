@@ -55,6 +55,7 @@
 //! `unboxed_simple` is identical to `unboxed` except that all the lifetime
 //! bounds in the type and parameters are substituted with a single lifetime.
 
+#![doc(html_root_url = "https://docs.rs/async-trait/0.1.66")]
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
