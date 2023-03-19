@@ -46,6 +46,8 @@ impl VisitMut for CollectLifetimes {
     fn visit_receiver_mut(&mut self, arg: &mut Receiver) {
         if let Some((reference, lifetime)) = &mut arg.reference {
             self.visit_opt_lifetime(*reference, lifetime);
+        } else {
+            visit_mut::visit_type_mut(self, &mut arg.ty);
         }
     }
 

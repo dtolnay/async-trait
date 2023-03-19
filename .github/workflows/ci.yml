@@ -39,17 +39,6 @@ jobs:
         if: matrix.rust == 'nightly'
       - run: cargo test
 
-  msrv:
-    name: Rust 1.39.0
-    needs: pre_ci
-    if: needs.pre_ci.outputs.continue
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.39.0
-      - run: cargo check
-
   clippy:
     name: Clippy
     runs-on: ubuntu-latest

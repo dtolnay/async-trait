@@ -1,6 +1,6 @@
 [package]
 name = "async-trait-fn"
-version = "0.1.66"
+version = "0.1.67"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 description = "A fork of async-trait with some useful options"
@@ -8,9 +8,8 @@ documentation = "https://docs.rs/async-trait-fn"
 edition = "2018"
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
-readme = "README.md"
 repository = "https://github.com/wvwwvwwv/async-trait-fn"
-rust-version = "1.39"
+rust-version = "1.56"
 
 [lib]
 proc-macro = true
@@ -18,7 +17,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0.96", features = ["full", "visit-mut"] }
+syn = { version = "2.0", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 futures = "0.3"
