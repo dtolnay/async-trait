@@ -325,6 +325,7 @@ mod expand;
 mod lifetime;
 mod parse;
 mod receiver;
+mod verbatim;
 
 use crate::args::Args;
 use crate::expand::expand;
