@@ -2,6 +2,7 @@ use crate::bound::{has_bound, InferredBound, Supertraits};
 use crate::lifetime::{AddLifetimeToImplTrait, CollectLifetimes};
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
+use crate::verbatim::VerbatimFn;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use std::collections::BTreeSet as Set;
@@ -11,8 +12,7 @@ use syn::visit_mut::{self, VisitMut};
 use syn::{
     parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericArgument, GenericParam,
     Generics, Ident, ImplItem, ImplItemType, Lifetime, LifetimeParam, Pat, PatIdent, PathArguments,
-    Receiver, ReturnType, Signature, Stmt, Token, TraitItem, TraitItemType, Type, TypePath,
-    WhereClause,
+    Receiver, ReturnType, Signature, Token, TraitItem, TraitItemType, Type, TypePath, WhereClause,
 };
 
 impl ToTokens for Item {
@@ -152,10 +152,10 @@ pub fn expand(input: &mut Item, is_local: bool) {
                 associated_type_impl_traits: &associated_type_impl_traits,
             };
             for inner in &mut input.items {
-                if let ImplItem::Fn(method) = inner {
-                    let sig = &mut method.sig;
-                    if sig.asyncness.is_some() {
+                match inner {
+                    ImplItem::Fn(method) if method.sig.asyncness.is_some() => {
                         let future_type = future_type_attr(&method.attrs, is_local);
+                        let sig = &mut method.sig;
                         let ret = ret_token_stream(&sig.output);
                         let block = &mut method.block;
                         let has_self = has_self_in_sig(sig) || has_self_in_block(block);
@@ -168,6 +168,19 @@ pub fn expand(input: &mut Item, is_local: bool) {
                         }
                         method.attrs.push(lint_suppress_with_body());
                     }
+                    ImplItem::Verbatim(tokens) => {
+                        let mut method = match syn::parse2::<VerbatimFn>(tokens.clone()) {
+                            Ok(method) if method.sig.asyncness.is_some() => method,
+                            _ => continue,
+                        };
+                        let future_type = future_type_attr(&method.attrs, is_local);
+                        let sig = &mut method.sig;
+                        let has_self = has_self_in_sig(sig);
+                        transform_sig(context, sig, has_self, false, future_type);
+                        method.attrs.push(lint_suppress_with_body());
+                        *tokens = quote!(#method);
+                    }
+                    _ => {}
                 }
             }
             implicit_associated_type_assigns
@@ -518,12 +531,6 @@ fn transform_block(
     block: &mut Block,
     future_type: FutureType,
 ) {
-    if let Some(Stmt::Item(syn::Item::Verbatim(item))) = block.stmts.first() {
-        if block.stmts.len() == 1 && item.to_string() == ";" {
-            return;
-        }
-    }
-
     let mut self_span = None;
     let decls = sig
         .inputs

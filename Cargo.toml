@@ -1,6 +1,6 @@
 [package]
 name = "async-trait-fn"
-version = "0.1.67"
+version = "0.1.68"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 description = "A fork of async-trait with some useful options"
@@ -17,7 +17,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "2.0", features = ["full", "visit-mut"] }
+syn = { version = "2.0.9", features = ["full", "visit-mut"] }
 
 [dev-dependencies]
 futures = "0.3"
