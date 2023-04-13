@@ -1,6 +1,11 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(associated_type_bounds, min_specialization, type_alias_impl_trait,)
+    feature(
+        associated_type_bounds,
+        impl_trait_in_assoc_type,
+        min_specialization,
+        type_alias_impl_trait,
+    )
 )]
 #![deny(rust_2021_compatibility)]
 #![allow(
