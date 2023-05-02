@@ -11,12 +11,12 @@ error: future cannot be sent between threads safely
    |
    = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
-  --> tests/ui/send-not-implemented.rs:11:12
+  --> tests/ui/send-not-implemented.rs:11:13
    |
 10 |         let _guard = mutex.lock().unwrap();
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
 11 |         f().await;
-   |            ^^^^^^ await occurs here, with `_guard` maybe used later
+   |             ^^^^^ await occurs here, with `_guard` maybe used later
 12 |     }
    |     - `_guard` is later dropped here
    = note: required for the cast from `[async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6]` to the object type `dyn Future<Output = ()> + Send`
@@ -35,12 +35,12 @@ error: future cannot be sent between threads safely
    |
    = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
-  --> tests/ui/send-not-implemented.rs:17:12
+  --> tests/ui/send-not-implemented.rs:17:13
    |
 16 |         let _guard = mutex.lock().unwrap();
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
 17 |         f().await;
-   |            ^^^^^^ await occurs here, with `_guard` maybe used later
+   |             ^^^^^ await occurs here, with `_guard` maybe used later
 18 |         true
 19 |     }
    |     - `_guard` is later dropped here
