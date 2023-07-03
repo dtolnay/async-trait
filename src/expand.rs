@@ -174,7 +174,7 @@ fn transform_sig(
     };
 
     let mut lifetimes = CollectLifetimes::new();
-    for arg in sig.inputs.iter_mut() {
+    for arg in &mut sig.inputs {
         match arg {
             FnArg::Receiver(arg) => lifetimes.visit_receiver_mut(arg),
             FnArg::Typed(arg) => lifetimes.visit_type_mut(&mut arg.ty),
