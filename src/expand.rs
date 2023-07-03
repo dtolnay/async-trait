@@ -126,6 +126,7 @@ fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
             clippy::async_yields_async,
+            clippy::diverging_sub_expression,
             clippy::let_unit_value,
             clippy::no_effect_underscore_binding,
             clippy::shadow_same,
