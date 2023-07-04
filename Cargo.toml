@@ -1,5 +1,4 @@
 [package]
-<<<<<<< HEAD
 name = "async-trait-fn"
 version = "0.1.69"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
