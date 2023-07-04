@@ -194,6 +194,7 @@ fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
             clippy::async_yields_async,
+            clippy::diverging_sub_expression,
             clippy::let_unit_value,
             clippy::no_effect_underscore_binding,
             clippy::shadow_same,
@@ -262,7 +263,7 @@ fn transform_sig(
     };
 
     let mut lifetimes = CollectLifetimes::new();
-    for arg in sig.inputs.iter_mut() {
+    for arg in &mut sig.inputs {
         match arg {
             FnArg::Receiver(arg) => {
                 lifetimes.visit_receiver_mut(arg);
