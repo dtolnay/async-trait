@@ -825,7 +825,7 @@ fn derive_implicit_type_name(id: &Ident) -> Ident {
 }
 
 fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {
-    for arg in sig.inputs.iter() {
+    for arg in &sig.inputs {
         if let FnArg::Receiver(arg) = arg {
             if let Some((_, lifetime)) = &arg.reference {
                 return lifetime.as_ref().cloned();
