@@ -118,7 +118,7 @@
 //! # Explanation
 //!
 //! Async fns get transformed into methods that return `Pin<Box<dyn Future +
-//! Send + 'async>>` and delegate to a private async freestanding function.
+//! Send + 'async_trait>>` and delegate to a private async freestanding function.
 //!
 //! For example the `impl Advertisement for AutoplayingVideo` above would be
 //! expanded as:
@@ -126,11 +126,11 @@
 //! ```
 //! # const IGNORE: &str = stringify! {
 //! impl Advertisement for AutoplayingVideo {
-//!     fn run<'async>(
-//!         &'async self,
-//!     ) -> Pin<Box<dyn core::future::Future<Output = ()> + Send + 'async>>
+//!     fn run<'async_trait>(
+//!         &'async_trait self,
+//!     ) -> Pin<Box<dyn core::future::Future<Output = ()> + Send + 'async_trait>>
 //!     where
-//!         Self: Sync + 'async,
+//!         Self: Sync + 'async_trait,
 //!     {
 //!         async fn run(_self: &AutoplayingVideo) {
 //!             /* the original method body */
