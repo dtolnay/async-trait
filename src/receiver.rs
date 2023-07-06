@@ -1,5 +1,4 @@
 use proc_macro2::{Group, Span, TokenStream, TokenTree};
-use std::iter::FromIterator;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, Path, Receiver, Signature, Token, TypePath,
