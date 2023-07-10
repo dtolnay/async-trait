@@ -1344,7 +1344,7 @@ pub mod issue89 {
     }
 
     #[async_trait]
-    impl Trait for Send + Sync {
+    impl Trait for dyn Send + Sync {
         async fn f(&self) {}
     }
 
