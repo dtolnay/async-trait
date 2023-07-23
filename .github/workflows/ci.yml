@@ -33,7 +33,7 @@ jobs:
           toolchain: ${{matrix.rust}}
       - name: Enable type layout randomization
         run: echo RUSTFLAGS=${RUSTFLAGS}\ -Zrandomize-layout >> $GITHUB_ENV
-        if: matrix.rust == 'nightly' && false # FIXME https://github.com/rust-lang/rust/issues/113941
+        if: matrix.rust == 'nightly'
       - name: Enable nightly-only tests
         run: echo RUSTFLAGS=${RUSTFLAGS}\ --cfg=async_trait_nightly_testing >> $GITHUB_ENV
         if: matrix.rust == 'nightly'
