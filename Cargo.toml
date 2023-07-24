@@ -1,6 +1,6 @@
 [package]
 name = "async-trait-fn"
-version = "0.1.71"
+version = "0.1.72"
 authors = ["David Tolnay <dtolnay@gmail.com>", "wvwwvwwv <wvwwvwwv@me.com>"]
 categories = ["asynchronous", "no-std"]
 edition = "2021"
@@ -26,3 +26,4 @@ trybuild = { version = "1.0.81", features = ["diff"] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--generate-link-to-definition"]
