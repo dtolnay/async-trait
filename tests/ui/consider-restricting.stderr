@@ -4,6 +4,7 @@ error: future cannot be sent between threads safely
 16 |     async fn publish<T: IntoUrl>(&self, url: T) {}
    |                                                 ^^ future created by async block is not `Send`
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send`
   --> tests/ui/consider-restricting.rs:16:41
    |
@@ -21,6 +22,7 @@ error: future cannot be sent between threads safely
 23 |     async fn publish<T>(&self, url: T) {}
    |                                        ^^ future created by async block is not `Send`
    |
+   = note: consider using `std::sync::Arc<T>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: captured value is not `Send`
   --> tests/ui/consider-restricting.rs:23:32
    |

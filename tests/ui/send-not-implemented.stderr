@@ -10,6 +10,7 @@ error: future cannot be sent between threads safely
    | |_____^ future created by async block is not `Send`
    |
    = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
+   = note: consider using `std::sync::Arc<MutexGuard<'_, ()>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:11:13
    |
@@ -34,6 +35,7 @@ error: future cannot be sent between threads safely
    | |_____^ future created by async block is not `Send`
    |
    = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
+   = note: consider using `std::sync::Arc<MutexGuard<'_, ()>>`; for more information visit <https://doc.rust-lang.org/book/ch16-03-shared-state.html>
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:17:13
    |
