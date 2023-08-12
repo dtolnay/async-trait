@@ -406,7 +406,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
     let let_ret = match &mut sig.output {
         ReturnType::Default => quote_spanned! {block.brace_token.span=>
             #(#decls)*
-            let _: () = { #(#stmts)* };
+            let () = { #(#stmts)* };
         },
         ReturnType::Type(_, ret) => {
             if contains_associated_type_impl_trait(context, ret) {
