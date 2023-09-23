@@ -8,4 +8,6 @@ impl Trait for Struct {
     async fn method(&self) {}
 }
 
-fn main() {}
+fn main() {
+    let _: &dyn Trait;
+}
