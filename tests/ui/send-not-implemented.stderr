@@ -9,7 +9,7 @@ error: future cannot be sent between threads safely
 12 | |     }
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
+   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:11:13
    |
@@ -19,7 +19,7 @@ note: future is not `Send` as this value is used across an await
    |             ^^^^^ await occurs here, with `_guard` maybe used later
 12 |     }
    |     - `_guard` is later dropped here
-   = note: required for the cast from `Pin<Box<[async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6]>>` to `Pin<Box<(dyn Future<Output = ()> + Send + 'async_trait)>>`
+   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}>>` to `Pin<Box<(dyn Future<Output = ()> + Send + 'async_trait)>>`
 
 error: future cannot be sent between threads safely
   --> tests/ui/send-not-implemented.rs:14:38
@@ -33,7 +33,7 @@ error: future cannot be sent between threads safely
 19 | |     }
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `[async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6]`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
+   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:17:13
    |
@@ -44,4 +44,4 @@ note: future is not `Send` as this value is used across an await
 18 |         true
 19 |     }
    |     - `_guard` is later dropped here
-   = note: required for the cast from `Pin<Box<[async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6]>>` to `Pin<Box<(dyn Future<Output = bool> + Send + 'async_trait)>>`
+   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}>>` to `Pin<Box<(dyn Future<Output = bool> + Send + 'async_trait)>>`
