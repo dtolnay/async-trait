@@ -17,9 +17,7 @@ note: future is not `Send` as this value is used across an await
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
 11 |         f().await;
    |             ^^^^^ await occurs here, with `_guard` maybe used later
-12 |     }
-   |     - `_guard` is later dropped here
-   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}>>` to `Pin<Box<(dyn Future<Output = ()> + Send + 'async_trait)>>`
+   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}>>` to `Pin<Box<dyn Future<Output = ()> + Send>>`
 
 error: future cannot be sent between threads safely
   --> tests/ui/send-not-implemented.rs:14:38
@@ -41,7 +39,4 @@ note: future is not `Send` as this value is used across an await
    |             ------ has type `MutexGuard<'_, ()>` which is not `Send`
 17 |         f().await;
    |             ^^^^^ await occurs here, with `_guard` maybe used later
-18 |         true
-19 |     }
-   |     - `_guard` is later dropped here
-   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}>>` to `Pin<Box<(dyn Future<Output = bool> + Send + 'async_trait)>>`
+   = note: required for the cast from `Pin<Box<{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}>>` to `Pin<Box<dyn Future<Output = bool> + Send>>`
