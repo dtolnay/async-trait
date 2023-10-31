@@ -12,3 +12,5 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
 2  |     async fn method(&self);
    |              ^^^^^^ ...because method `method` is `async`
    = help: consider moving `method` to another trait
+   = help: only type `Struct` is seen to implement the trait in this crate, consider using it directly instead
+   = note: `Trait` can be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
