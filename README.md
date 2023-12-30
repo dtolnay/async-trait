@@ -6,29 +6,43 @@ Async trait methods
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-async--trait-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/async-trait)
 [<img alt="build status" src="https://img.shields.io/github/actions/workflow/status/dtolnay/async-trait/ci.yml?branch=master&style=for-the-badge" height="20">](https://github.com/dtolnay/async-trait/actions?query=branch%3Amaster)
 
-The initial round of stabilizations for the async/await language feature in Rust
-1.39 did not include support for async fn in traits. Trying to include an async
-fn in a trait produces the following error:
+The stabilization of async functions in traits in Rust 1.75 did not include
+support for using traits containing async functions as `dyn Trait`. Trying to
+use dyn with an async trait produces the following error:
 
 ```rust
-trait MyTrait {
-    async fn f() {}
+pub trait Trait {
+    async fn f(&self);
+}
+
+pub fn make() -> Box<dyn Trait> {
+    unimplemented!()
 }
 ```
 
 ```console
-error[E0706]: trait fns cannot be declared `async`
- --> src/main.rs:4:5
+error[E0038]: the trait `Trait` cannot be made into an object
+ --> src/main.rs:5:22
   |
-4 |     async fn f() {}
-  |     ^^^^^^^^^^^^^^^
+5 | pub fn make() -> Box<dyn Trait> {
+  |                      ^^^^^^^^^ `Trait` cannot be made into an object
+  |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+ --> src/main.rs:2:14
+  |
+1 | pub trait Trait {
+  |           ----- this trait cannot be made into an object...
+2 |     async fn f(&self);
+  |              ^ ...because method `f` is `async`
+  = help: consider moving `f` to another trait
 ```
 
-This crate provides an attribute macro to make async fn in traits work.
+This crate provides an attribute macro to make async fn in traits work with dyn
+traits.
 
 Please refer to [*why async fn in traits are hard*][hard] for a deeper analysis
-of how this implementation differs from what the compiler and language hope to
-deliver in the future.
+of how this implementation differs from what the compiler and language deliver
+natively.
 
 [hard]: https://smallcultfollowing.com/babysteps/blog/2019/10/26/async-fn-in-traits-are-hard/
 
@@ -40,7 +54,9 @@ This example implements the core of a highly effective advertising platform
 using async fn in a trait.
 
 The only thing to notice here is that we write an `#[async_trait]` macro on top
-of traits and trait impls that contain async fn, and then they work.
+of traits and trait impls that contain async fn, and then they work. We get to
+have `Vec<Box<dyn Advertisement + Sync>>` or `&[&dyn Advertisement]`, for
+example.
 
 ```rust
 use async_trait::async_trait;
@@ -95,8 +111,7 @@ can't be that badly broken.
 - &#128077;&ensp;Associated types;
 - &#128077;&ensp;Having async and non-async functions in the same trait;
 - &#128077;&ensp;Default implementations provided by the trait;
-- &#128077;&ensp;Elided lifetimes;
-- &#128077;&ensp;Dyn-capable traits.
+- &#128077;&ensp;Elided lifetimes.
 
 <br>
 

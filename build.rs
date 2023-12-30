@@ -17,10 +17,6 @@ fn main() {
     if compiler < 47 {
         println!("cargo:rustc-cfg=self_span_hack");
     }
-
-    if compiler >= 75 && env::var_os("DOCS_RS").is_none() {
-        println!("cargo:rustc-cfg=native_async_fn_in_trait");
-    }
 }
 
 fn rustc_minor_version() -> Option<u32> {
