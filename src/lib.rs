@@ -133,7 +133,7 @@
 //! # Explanation
 //!
 //! Async fns get transformed into methods that return `Pin<Box<dyn Future +
-//! Send + 'async_trait>>` and delegate to a private async freestanding function.
+//! Send + 'async_trait>>` and delegate to an async block.
 //!
 //! For example the `impl Advertisement for AutoplayingVideo` above would be
 //! expanded as:
@@ -147,11 +147,9 @@
 //!     where
 //!         Self: Sync + 'async_trait,
 //!     {
-//!         async fn run(_self: &AutoplayingVideo) {
+//!         Box::pin(async move {
 //!             /* the original method body */
-//!         }
-//!
-//!         Box::pin(run(self))
+//!         })
 //!     }
 //! }
 //! # };
