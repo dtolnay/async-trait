@@ -675,7 +675,7 @@ pub mod issue53 {
     use async_trait::async_trait;
 
     pub struct Unit;
-    pub struct Tuple(u8);
+    pub struct Tuple(pub u8);
     pub struct Struct {
         pub x: u8,
     }
