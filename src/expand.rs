@@ -828,7 +828,7 @@ fn receiver_lifetime(sig: &Signature) -> Option<Lifetime> {
     for arg in &sig.inputs {
         if let FnArg::Receiver(arg) = arg {
             if let Some((_, lifetime)) = &arg.reference {
-                return lifetime.as_ref().cloned();
+                return lifetime.clone();
             }
         }
     }
