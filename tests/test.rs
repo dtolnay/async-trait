@@ -731,7 +731,6 @@ pub mod issue53 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/57
-#[cfg(async_trait_nightly_testing)]
 pub mod issue57 {
     use crate::executor;
     use async_trait::async_trait;
@@ -1148,7 +1147,6 @@ pub mod issue129 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/134
-#[cfg(async_trait_nightly_testing)]
 pub mod issue134 {
     use async_trait::async_trait;
 
