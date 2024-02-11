@@ -9,6 +9,7 @@
 )]
 #![deny(rust_2021_compatibility)]
 #![allow(
+    clippy::incompatible_msrv, // https://github.com/rust-lang/rust-clippy/issues/12257
     clippy::let_underscore_untyped,
     clippy::let_unit_value,
     clippy::missing_panics_doc,
