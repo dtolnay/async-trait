@@ -363,6 +363,7 @@ pub mod issue23 {
         }
     }
 
+    #[allow(dead_code)]
     struct S {}
 
     #[async_trait]
@@ -1489,6 +1490,7 @@ pub mod issue226 {
         async fn cfg_param_tuple(&self, (left, right): (u8, u8));
     }
 
+    #[allow(dead_code)]
     struct Struct;
 
     #[async_trait]
