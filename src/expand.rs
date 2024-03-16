@@ -125,6 +125,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
 fn lint_suppress_with_body() -> Attribute {
     parse_quote! {
         #[allow(
+            unused_qualifications,
             clippy::async_yields_async,
             clippy::diverging_sub_expression,
             clippy::let_unit_value,
@@ -140,6 +141,7 @@ fn lint_suppress_with_body() -> Attribute {
 fn lint_suppress_without_body() -> Attribute {
     parse_quote! {
         #[allow(
+            unused_qualifications,
             clippy::type_complexity,
             clippy::type_repetition_in_bounds
         )]
