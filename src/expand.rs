@@ -239,7 +239,9 @@ fn transform_sig(
         .push(parse_quote_spanned!(default_span=> 'async_trait));
 
     if has_self {
-        let bounds: &[InferredBound] = if let Some(receiver) = sig.receiver() {
+        let bounds: &[InferredBound] = if is_local {
+            &[]
+        } else if let Some(receiver) = sig.receiver() {
             match receiver.ty.as_ref() {
                 // self: &Self
                 Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
@@ -275,7 +277,7 @@ fn transform_sig(
                 Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, bound),
                 Context::Impl { .. } => true,
             };
-            if assume_bound || is_local {
+            if assume_bound {
                 None
             } else {
                 Some(bound.spanned_path(default_span))
