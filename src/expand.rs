@@ -267,12 +267,9 @@ fn transform_sig(
             &[InferredBound::Send]
         };
 
-        let bounds = bounds.iter().filter(|bound| {
-            let assume_bound = match context {
-                Context::Trait { supertraits, .. } => !has_default || has_bound(supertraits, bound),
-                Context::Impl { .. } => true,
-            };
-            !assume_bound
+        let bounds = bounds.iter().filter(|bound| match context {
+            Context::Trait { supertraits, .. } => has_default && !has_bound(supertraits, bound),
+            Context::Impl { .. } => false,
         });
 
         where_clause_or_default(&mut sig.generics.where_clause)
