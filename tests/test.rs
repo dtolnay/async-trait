@@ -1384,6 +1384,7 @@ pub mod issue169 {
     use async_trait::async_trait;
 
     #[async_trait]
+    #[allow(unused_qualifications)]
     pub trait Trait: ::core::marker::Sync {
         async fn f(&self) {}
     }
