@@ -1345,6 +1345,7 @@ pub mod issue158 {
     fn f() {}
 
     #[async_trait]
+    #[allow(unused_qualifications)]
     pub trait Trait {
         async fn f(&self) {
             self::f();
