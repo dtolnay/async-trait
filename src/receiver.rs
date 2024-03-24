@@ -1,4 +1,4 @@
-use proc_macro2::{Group, Span, TokenStream, TokenTree};
+use proc_macro2::{Group, TokenStream, TokenTree};
 use syn::visit_mut::{self, VisitMut};
 use syn::{
     Block, ExprPath, Ident, Item, Macro, Pat, PatIdent, Path, Receiver, Signature, Token, TypePath,
@@ -78,7 +78,7 @@ impl VisitMut for HasSelf {
     }
 }
 
-pub struct ReplaceSelf(pub Span);
+pub struct ReplaceSelf;
 
 impl ReplaceSelf {
     #[cfg_attr(not(self_span_hack), allow(clippy::unused_self))]

@@ -335,7 +335,7 @@ fn transform_sig(
 //         ___ret
 //     })
 fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
-    let mut self_span = None;
+    let mut replace_self = false;
     let decls = sig
         .inputs
         .iter()
@@ -346,8 +346,8 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                 mutability,
                 ..
             }) => {
+                replace_self = true;
                 let ident = Ident::new("__self", self_token.span);
-                self_span = Some(self_token.span);
                 quote!(let #mutability #ident = #self_token;)
             }
             FnArg::Typed(arg) => {
@@ -389,9 +389,8 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
         })
         .collect::<Vec<_>>();
 
-    if let Some(span) = self_span {
-        let mut replace_self = ReplaceSelf(span);
-        replace_self.visit_block_mut(block);
+    if replace_self {
+        ReplaceSelf.visit_block_mut(block);
     }
 
     let stmts = &block.stmts;
