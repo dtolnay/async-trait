@@ -3,7 +3,7 @@ use std::process::Command;
 use std::str;
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=DOCS_RS");
+    println!("cargo:rerun-if-changed=build.rs");
 
     let compiler = match rustc_minor_version() {
         Some(compiler) => compiler,
