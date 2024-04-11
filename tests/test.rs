@@ -252,25 +252,6 @@ pub async fn test_unimplemented() {
     let _ = <() as Trait>::f;
 }
 
-#[cfg(async_trait_nightly_testing)]
-pub async fn test_divering_function() {
-    #[async_trait]
-    pub trait Trait {
-        async fn f() -> !;
-    }
-
-    #[async_trait]
-    impl Trait for () {
-        async fn f() -> ! {
-            loop {
-                std::thread::sleep(std::time::Duration::from_millis(1));
-            }
-        }
-    }
-
-    let _ = <() as Trait>::f;
-}
-
 // https://github.com/dtolnay/async-trait/issues/1
 pub mod issue1 {
     use async_trait::async_trait;
@@ -1639,5 +1620,25 @@ pub mod issue238 {
     #[async_trait]
     impl Trait for &Struct {
         async fn f() {}
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/266
+#[cfg(async_trait_nightly_testing)]
+pub mod issue266 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f() -> !;
+    }
+
+    #[async_trait]
+    impl Trait for () {
+        async fn f() -> ! {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+        }
     }
 }
