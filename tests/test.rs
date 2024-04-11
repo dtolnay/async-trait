@@ -1,6 +1,6 @@
 #![cfg_attr(
     async_trait_nightly_testing,
-    feature(impl_trait_in_assoc_type, min_specialization)
+    feature(impl_trait_in_assoc_type, min_specialization, never_type)
 )]
 #![deny(rust_2021_compatibility, unused_qualifications)]
 #![allow(
@@ -248,6 +248,25 @@ pub async fn test_unimplemented() {
     }
 
     impl Trait for () {}
+
+    let _ = <() as Trait>::f;
+}
+
+#[cfg(async_trait_nightly_testing)]
+pub async fn test_divering_function() {
+    #[async_trait]
+    pub trait Trait {
+        async fn f() -> !;
+    }
+
+    #[async_trait]
+    impl Trait for () {
+        async fn f() -> ! {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+        }
+    }
 
     let _ = <() as Trait>::f;
 }

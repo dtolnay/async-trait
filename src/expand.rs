@@ -409,6 +409,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
             } else {
                 quote! {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<#ret> {
+                        #[allow(unreachable_code)]
                         return __ret;
                     }
                     #(#decls)*
