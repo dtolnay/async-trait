@@ -427,9 +427,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
-    let span: Span = syn::spanned::Spanned::span(pat);
-    #[cfg(not(no_span_mixed_site))]
-    let span = span.resolved_at(Span::mixed_site());
+    let span = syn::spanned::Spanned::span(pat).resolved_at(Span::mixed_site());
     format_ident!("__arg{}", i, span = span)
 }
 
