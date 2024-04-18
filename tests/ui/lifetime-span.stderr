@@ -9,15 +9,6 @@ help: indicate the anonymous lifetime
 12 | impl Trait<'_> for A {
    |           ++++
 
-error[E0195]: lifetime parameters or bounds on method `method` do not match the trait declaration
-  --> tests/ui/lifetime-span.rs:18:14
-   |
-8  |     async fn method(&'r self);
-   |              ---------------- lifetimes in impl do not match this method in trait
-...
-18 |     async fn method(&self) {}
-   |              ^^^^^^^^^^^^^ lifetimes do not match method in trait
-
 error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> tests/ui/lifetime-span.rs:32:10
    |
