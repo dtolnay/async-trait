@@ -6,6 +6,7 @@ categories = ["asynchronous", "no-std"]
 description = "Type erasure for async trait methods"
 documentation = "https://docs.rs/async-trait"
 edition = "2021"
+exclude = ["build.rs"]
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/dtolnay/async-trait"
