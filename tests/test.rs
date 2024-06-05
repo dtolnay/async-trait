@@ -1380,7 +1380,6 @@ pub mod issue161 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/169
-#[deny(where_clauses_object_safety)]
 pub mod issue169 {
     use async_trait::async_trait;
 
