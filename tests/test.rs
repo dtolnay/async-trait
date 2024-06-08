@@ -336,7 +336,7 @@ pub mod issue17 {
     }
 
     pub struct Struct {
-        string: String,
+        pub string: String,
     }
 
     #[async_trait]
