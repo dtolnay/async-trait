@@ -169,8 +169,8 @@ fn transform_sig(
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let (ret_arrow, ret) = match &sig.output {
-        ReturnType::Default => (Token![->](Span::call_site()), quote!(())),
-        ReturnType::Type(arrow, ret) => (*arrow, quote!(#ret)),
+        ReturnType::Default => (quote!(->), quote!(())),
+        ReturnType::Type(arrow, ret) => (quote!(#arrow), quote!(#ret)),
     };
 
     let mut lifetimes = CollectLifetimes::new();
