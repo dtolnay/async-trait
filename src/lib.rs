@@ -327,7 +327,8 @@
     clippy::module_name_repetitions,
     clippy::shadow_unrelated,
     clippy::similar_names,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::trivially_copy_pass_by_ref
 )]
 
 extern crate proc_macro;
