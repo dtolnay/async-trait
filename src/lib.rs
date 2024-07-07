@@ -316,7 +316,7 @@
 //! let object = &value as &dyn ObjectSafe;
 //! ```
 
-#![doc(html_root_url = "https://docs.rs/async-trait/0.1.80")]
+#![doc(html_root_url = "https://docs.rs/async-trait/0.1.81")]
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
