@@ -13,7 +13,7 @@ error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was suppl
   --> tests/ui/lifetime-span.rs:32:10
    |
 32 | impl<'r> Trait2<'r> for B {
-   |          ^^^^^^---- help: remove these generics
+   |          ^^^^^^---- help: remove the unnecessary generics
    |          |
    |          expected 0 lifetime arguments
    |
