@@ -38,6 +38,11 @@ jobs:
         run: echo RUSTFLAGS=${RUSTFLAGS}\ --cfg=async_trait_nightly_testing >> $GITHUB_ENV
         if: matrix.rust == 'nightly'
       - run: cargo test
+      - uses: actions/upload-artifact@v4
+        if: matrix.rust == 'nightly' && always()
+        with:
+          name: Cargo.lock
+          path: Cargo.lock
 
   minimal:
     name: Minimal versions
