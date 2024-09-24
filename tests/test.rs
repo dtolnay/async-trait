@@ -1641,3 +1641,22 @@ pub mod issue266 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/277
+pub mod issue277 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&self);
+    }
+
+    #[async_trait]
+    impl Trait for () {
+        async fn f(mut self: &Self) {
+            g(&mut self);
+        }
+    }
+
+    fn g(_: &mut &()) {}
+}
