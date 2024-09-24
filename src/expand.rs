@@ -129,6 +129,7 @@ fn lint_suppress_with_body() -> Attribute {
             clippy::async_yields_async,
             clippy::diverging_sub_expression,
             clippy::let_unit_value,
+            clippy::needless_arbitrary_self_type,
             clippy::no_effect_underscore_binding,
             clippy::shadow_same,
             clippy::type_complexity,
