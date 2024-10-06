@@ -325,6 +325,7 @@
     clippy::items_after_statements,
     clippy::match_like_matches_macro,
     clippy::module_name_repetitions,
+    clippy::needless_lifetimes,
     clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::too_many_lines,
