@@ -9,7 +9,7 @@ error: future cannot be sent between threads safely
 12 | |     }
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`, which is required by `{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}: Send`
+   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:8:26: 12:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:11:13
    |
@@ -31,7 +31,7 @@ error: future cannot be sent between threads safely
 19 | |     }
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`, which is required by `{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}: Send`
+   = help: within `{async block@$DIR/tests/ui/send-not-implemented.rs:14:38: 19:6}`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
   --> tests/ui/send-not-implemented.rs:17:13
    |
