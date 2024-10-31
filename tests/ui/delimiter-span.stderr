@@ -1,4 +1,4 @@
-error: no rules expected the token `{`
+error: no rules expected `{`
   --> tests/ui/delimiter-span.rs:19:16
    |
 5  | macro_rules! picky {
@@ -9,7 +9,7 @@ error: no rules expected the token `{`
    |
    = note: while trying to match sequence start
 
-error: no rules expected the token `{`
+error: no rules expected `{`
   --> tests/ui/delimiter-span.rs:20:16
    |
 5  | macro_rules! picky {
