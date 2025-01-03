@@ -1663,6 +1663,7 @@ pub mod issue277 {
 }
 
 // https://github.com/dtolnay/async-trait/issues/281
+#[rustversion::since(1.75)]
 pub mod issue281 {
     use async_trait::async_trait;
 
