@@ -1661,3 +1661,24 @@ pub mod issue277 {
 
     fn g(_: &mut &()) {}
 }
+
+// https://github.com/dtolnay/async-trait/issues/281
+pub mod issue281 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        type Error;
+        async fn method(&self) -> Result<impl AsRef<str> + Send + Sync, Self::Error>;
+    }
+
+    pub struct T;
+
+    #[async_trait]
+    impl Trait for T {
+        type Error = ();
+        async fn method(&self) -> Result<impl AsRef<str> + Send + Sync, Self::Error> {
+            Ok("Hello World")
+        }
+    }
+}
