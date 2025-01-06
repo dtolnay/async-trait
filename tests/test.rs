@@ -1683,3 +1683,23 @@ pub mod issue281 {
         }
     }
 }
+
+pub mod issue283 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn a();
+    }
+
+    pub trait Bound {
+        fn b();
+    }
+
+    #[async_trait]
+    impl<T: Bound> Trait for T {
+        async fn a() {
+            Self::b();
+        }
+    }
+}
