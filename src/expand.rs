@@ -99,7 +99,7 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     ImplItem::Fn(method) if method.sig.asyncness.is_some() => {
                         let sig = &mut method.sig;
                         let block = &mut method.block;
-                        let has_self = has_self_in_sig(sig) || has_self_in_block(block);
+                        let has_self = has_self_in_sig(sig);
                         transform_block(context, sig, block);
                         transform_sig(context, sig, has_self, false, is_local);
                         method.attrs.push(lint_suppress_with_body());
