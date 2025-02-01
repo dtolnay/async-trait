@@ -23,17 +23,18 @@
 //! ```
 //!
 //! ```text
-//! error[E0038]: the trait `Trait` cannot be made into an object
+//! error[E0038]: the trait `Trait` is not dyn compatible
 //!  --> src/main.rs:5:22
 //!   |
 //! 5 | pub fn make() -> Box<dyn Trait> {
-//!   |                      ^^^^^^^^^ `Trait` cannot be made into an object
+//!   |                      ^^^^^^^^^ `Trait` is not dyn compatible
 //!   |
-//! note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+//! note: for a trait to be dyn compatible it needs to allow building a vtable
+//!       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 //!  --> src/main.rs:2:14
 //!   |
 //! 1 | pub trait Trait {
-//!   |           ----- this trait cannot be made into an object...
+//!   |           ----- this trait is not dyn compatible...
 //! 2 |     async fn f(&self);
 //!   |              ^ ...because method `f` is `async`
 //!   = help: consider moving `f` to another trait
