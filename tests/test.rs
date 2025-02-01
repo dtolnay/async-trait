@@ -107,48 +107,48 @@ pub async fn test() {
     s.calls_mut().await;
 }
 
-pub async fn test_object_safe_without_default() {
+pub async fn test_dyn_compatible_without_default() {
     #[async_trait]
-    trait ObjectSafe {
+    trait DynCompatible {
         async fn f(&self);
     }
 
     #[async_trait]
-    impl ObjectSafe for Struct {
+    impl DynCompatible for Struct {
         async fn f(&self) {}
     }
 
-    let object = &Struct as &dyn ObjectSafe;
+    let object = &Struct as &dyn DynCompatible;
     object.f().await;
 }
 
-pub async fn test_object_safe_with_default() {
+pub async fn test_dyn_compatible_with_default() {
     #[async_trait]
-    trait ObjectSafe: Sync {
+    trait DynCompatible: Sync {
         async fn f(&self) {}
     }
 
     #[async_trait]
-    impl ObjectSafe for Struct {
+    impl DynCompatible for Struct {
         async fn f(&self) {}
     }
 
-    let object = &Struct as &dyn ObjectSafe;
+    let object = &Struct as &dyn DynCompatible;
     object.f().await;
 }
 
-pub async fn test_object_no_send() {
+pub async fn test_dyn_compatible_no_send() {
     #[async_trait(?Send)]
-    trait ObjectSafe: Sync {
+    trait DynCompatible: Sync {
         async fn f(&self) {}
     }
 
     #[async_trait(?Send)]
-    impl ObjectSafe for Struct {
+    impl DynCompatible for Struct {
         async fn f(&self) {}
     }
 
-    let object = &Struct as &dyn ObjectSafe;
+    let object = &Struct as &dyn DynCompatible;
     object.f().await;
 }
 
