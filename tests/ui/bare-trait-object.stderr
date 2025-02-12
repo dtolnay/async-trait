@@ -10,5 +10,6 @@ help: you can add the `dyn` keyword if you want a trait object
    |                +++
 help: alternatively use a blanket implementation to implement `Trait` for all types that also implement `Send + Sync`
    |
-11 | impl<T: Send + Sync> Trait for T {
-   |     ++++++++++++++++           ~
+11 - impl Trait for Send + Sync {
+11 + impl<T: Send + Sync> Trait for T {
+   |
