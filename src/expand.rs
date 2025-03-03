@@ -192,7 +192,7 @@ fn transform_sig(
                     Some(colon_token) => colon_token.span,
                     None => param_name.span(),
                 };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                let bounds = mem::take(&mut param.bounds);
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
                     .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
@@ -203,7 +203,7 @@ fn transform_sig(
                     Some(colon_token) => colon_token.span,
                     None => param_name.span(),
                 };
-                let bounds = mem::replace(&mut param.bounds, Punctuated::new());
+                let bounds = mem::take(&mut param.bounds);
                 where_clause_or_default(&mut sig.generics.where_clause)
                     .predicates
                     .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
