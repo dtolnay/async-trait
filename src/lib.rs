@@ -218,6 +218,7 @@
 #![allow(
     clippy::default_trait_access,
     clippy::doc_markdown,
+    clippy::elidable_lifetime_names,
     clippy::explicit_auto_deref,
     clippy::if_not_else,
     clippy::items_after_statements,

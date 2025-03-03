@@ -4,6 +4,7 @@
 )]
 #![deny(rust_2021_compatibility, unused_qualifications)]
 #![allow(
+    clippy::elidable_lifetime_names,
     clippy::incompatible_msrv, // https://github.com/rust-lang/rust-clippy/issues/12257
     clippy::let_underscore_untyped,
     clippy::let_unit_value,
