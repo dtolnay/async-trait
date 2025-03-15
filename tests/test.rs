@@ -1685,6 +1685,7 @@ pub mod issue281 {
     }
 }
 
+// https://github.com/dtolnay/async-trait/issues/283
 pub mod issue283 {
     use async_trait::async_trait;
 
