@@ -192,10 +192,14 @@ fn transform_sig(
                     Some(colon_token) => colon_token.span,
                     None => param_name.span(),
                 };
-                let bounds = mem::take(&mut param.bounds);
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+                if param.attrs.is_empty() {
+                    let bounds = mem::take(&mut param.bounds);
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param_name: 'async_trait + #bounds));
+                } else {
+                    param.bounds.push(parse_quote!('async_trait));
+                }
             }
             GenericParam::Lifetime(param) => {
                 let param_name = &param.lifetime;
@@ -203,10 +207,14 @@ fn transform_sig(
                     Some(colon_token) => colon_token.span,
                     None => param_name.span(),
                 };
-                let bounds = mem::take(&mut param.bounds);
-                where_clause_or_default(&mut sig.generics.where_clause)
-                    .predicates
-                    .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
+                if param.attrs.is_empty() {
+                    let bounds = mem::take(&mut param.bounds);
+                    where_clause_or_default(&mut sig.generics.where_clause)
+                        .predicates
+                        .push(parse_quote_spanned!(span=> #param: 'async_trait + #bounds));
+                } else {
+                    param.bounds.push(parse_quote!('async_trait));
+                }
             }
             GenericParam::Const(_) => {}
         }
