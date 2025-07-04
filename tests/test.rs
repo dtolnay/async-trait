@@ -881,7 +881,7 @@ pub mod issue87 {
 
 // https://github.com/dtolnay/async-trait/issues/89
 pub mod issue89 {
-    #![allow(bare_trait_objects)]
+    #![allow(bare_trait_objects, unused_parens)]
 
     use async_trait::async_trait;
 
