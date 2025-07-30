@@ -8,7 +8,7 @@ error: unused pinned boxed `Future` trait object that must be used
 note: the lint level is defined here
   --> tests/ui/must-use.rs:1:9
    |
-1  | #![deny(unused_must_use)]
+ 1 | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
 error: unused return value of `Interface::f` that must be used
