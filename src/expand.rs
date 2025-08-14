@@ -404,18 +404,18 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
         ReplaceSelf.visit_block_mut(block);
     }
 
-    let stmts = &block.stmts;
     let let_ret = match &mut sig.output {
-        ReturnType::Default => quote_spanned! {block.brace_token.span=>
+        ReturnType::Default => quote! {
             #(#decls)*
-            let () = { #(#stmts)* };
+            let _: () = #block;
         },
         ReturnType::Type(_, ret) => {
             if contains_associated_type_impl_trait(context, ret) {
                 if decls.is_empty() {
+                    let stmts = &block.stmts;
                     quote!(#(#stmts)*)
                 } else {
-                    quote!(#(#decls)* { #(#stmts)* })
+                    quote!(#(#decls)* #block)
                 }
             } else {
                 let mut ret = ret.clone();
@@ -426,14 +426,14 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
                         return __ret;
                     }
                     #(#decls)*
-                    let __ret: #ret = { #(#stmts)* };
+                    let __ret: #ret = #block;
                     #[allow(unreachable_code)]
                     __ret
                 }
             }
         }
     };
-    let box_pin = quote_spanned!(block.brace_token.span=>
+    let box_pin = quote_spanned!(sig.asyncness.unwrap().span=>
         Box::pin(async move { #let_ret })
     );
     block.stmts = parse_quote!(#box_pin);
