@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> tests/ui/type-mismatch.rs:13:23
+   |
+13 |       async fn f(&self) {
+   |  _______________________^
+14 | |         0
+15 | |     }
+   | |_____^ expected integer, found `()`
+
+error[E0308]: mismatched types
+  --> tests/ui/type-mismatch.rs:16:23
+   |
+16 |       async fn g(&self) {
+   |  _______________________^
+17 | |         0
+18 | |     }
+   | |_____^ expected integer, found `()`
