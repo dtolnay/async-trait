@@ -1,6 +1,6 @@
 [package]
 name = "async-trait"
-version = "0.1.88"
+version = "0.1.89"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 categories = ["asynchronous", "no-std"]
 description = "Type erasure for async trait methods"
