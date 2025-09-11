@@ -14,6 +14,7 @@
     clippy::needless_return,
     clippy::non_minimal_cfg,
     clippy::trivially_copy_pass_by_ref,
+    clippy::uninlined_format_args,
     clippy::unused_async
 )]
 
