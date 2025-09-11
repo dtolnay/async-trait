@@ -25,7 +25,7 @@ futures = "0.3.30"
 rustversion = "1.0.13"
 tracing = "0.1.40"
 tracing-attributes = "0.1.27"
-trybuild = { version = "1.0.81", features = ["diff"] }
+trybuild = { version = "1.0.108", features = ["diff"] }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
