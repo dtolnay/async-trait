@@ -219,6 +219,7 @@
     clippy::default_trait_access,
     clippy::doc_markdown,
     clippy::elidable_lifetime_names,
+    clippy::expl_impl_clone_on_copy, // https://github.com/rust-lang/rust-clippy/issues/15842
     clippy::explicit_auto_deref,
     clippy::if_not_else,
     clippy::items_after_statements,
