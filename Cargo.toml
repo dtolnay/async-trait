@@ -10,7 +10,7 @@ exclude = ["build.rs"]
 keywords = ["async"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/dtolnay/async-trait"
-rust-version = "1.61"
+rust-version = "1.68"
 
 [lib]
 proc-macro = true
