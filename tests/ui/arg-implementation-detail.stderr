@@ -3,3 +3,13 @@ error[E0425]: cannot find value `__arg0` in this scope
    |
 18 |         let _ = __arg0;
    |                 ^^^^^^ not found in this scope
+   |
+help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
+  --> tests/ui/arg-implementation-detail.rs:7:16
+   |
+ 5 | #[async_trait]
+   | -------------- in this attribute macro expansion
+ 6 | pub trait Trait {
+ 7 |     async fn f((_a, _b): (Struct, Struct)) {
+   |                ^^^^^^^^
+   = note: this error originates in the attribute macro `async_trait` (in Nightly builds, run with -Z macro-backtrace for more info)
