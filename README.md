@@ -156,7 +156,7 @@ If you're using `async-trait` from a `no_std` environment with `alloc`, enable
 
 ```toml
 [dependencies]
-async-trait = { version = "0.1.89", features = ["alloc"] }
+async-trait = { version = "0.1.90", features = ["alloc"] }
 ```
 
 <br>
