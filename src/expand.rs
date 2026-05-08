@@ -321,11 +321,23 @@ fn transform_sig(
     } else {
         quote!(::core::marker::Send + 'async_trait)
     };
-    sig.output = parse_quote! {
-        #ret_arrow ::core::pin::Pin<::alloc::boxed::Box<
-            dyn ::core::future::Future<Output = #ret> + #bounds
-        >>
-    };
+    #[cfg(feature = "alloc")]
+    {
+        sig.output = parse_quote! {
+            #ret_arrow ::core::pin::Pin<::alloc::boxed::Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        };
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    {
+        sig.output = parse_quote! {
+            #ret_arrow ::core::pin::Pin<Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        };
+    }
 }
 
 // Input:
@@ -433,8 +445,14 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
             }
         }
     };
+    #[cfg(feature = "alloc")]
     let box_pin = quote_spanned!(sig.asyncness.unwrap().span=>
         ::alloc::boxed::Box::pin(async move { #let_ret })
+    );
+
+    #[cfg(not(feature = "alloc"))]
+    let box_pin = quote_spanned!(sig.asyncness.unwrap().span=>
+        Box::pin(async move { #let_ret })
     );
     block.stmts = parse_quote!(#box_pin);
 }

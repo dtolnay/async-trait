@@ -167,6 +167,18 @@
 //!
 //! <br>
 //!
+//! # `no_std` usage
+//!
+//! If you're using `async-trait` from a `no_std` environment with `alloc`,
+//! enable `async-trait`'s `alloc` feature.
+//!
+//! ```toml
+//! [dependencies]
+//! async-trait = { version = "0.1.89", features = ["alloc"] }
+//! ```
+//!
+//! <br>
+//!
 //! # Elided lifetimes
 //!
 //! Be aware that async fn syntax does not allow lifetime elision outside of `&`
