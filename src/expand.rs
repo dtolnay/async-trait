@@ -322,7 +322,7 @@ fn transform_sig(
         quote!(::core::marker::Send + 'async_trait)
     };
     sig.output = parse_quote! {
-        #ret_arrow ::core::pin::Pin<Box<
+        #ret_arrow ::core::pin::Pin<::alloc::boxed::Box<
             dyn ::core::future::Future<Output = #ret> + #bounds
         >>
     };
@@ -434,7 +434,7 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
         }
     };
     let box_pin = quote_spanned!(sig.asyncness.unwrap().span=>
-        Box::pin(async move { #let_ret })
+        ::alloc::boxed::Box::pin(async move { #let_ret })
     );
     block.stmts = parse_quote!(#box_pin);
 }
