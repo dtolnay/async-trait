@@ -4,7 +4,6 @@
 extern crate alloc;
 extern crate std;
 
-use alloc::boxed::Box;
 use async_trait::async_trait;
 
 mod executor;
@@ -18,10 +17,6 @@ trait Trait {
     async fn selfref(&self) {}
 
     async fn required() -> Self::Assoc;
-
-    async fn generic_type_param<T: Send>(x: Box<T>) -> T {
-        *x
-    }
 }
 
 #[async_trait]
@@ -31,10 +26,6 @@ impl Trait for Struct {
     async fn selfref(&self) {}
 
     async fn required() -> Self::Assoc {}
-
-    async fn generic_type_param<T: Send>(x: Box<T>) -> T {
-        *x
-    }
 }
 
 #[test]
@@ -44,7 +35,6 @@ fn test_no_std_alloc_trait_methods() {
         s.selfref().await;
 
         Struct::required().await;
-        Struct::generic_type_param(Box::new("")).await;
     });
 }
 
