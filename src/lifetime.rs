@@ -64,6 +64,19 @@ impl VisitMut for CollectLifetimes {
     }
 }
 
+pub struct NeedsAsyncTrait(pub bool);
+
+impl VisitMut for NeedsAsyncTrait {
+    fn visit_type_impl_trait_mut(&mut self, _ty: &mut TypeImplTrait) {
+        // the general lowering bounds impl Trait arguments by `+ 'async_trait`
+        self.0 = true;
+    }
+
+    fn visit_lifetime_mut(&mut self, lifetime: &mut Lifetime) {
+        self.0 |= lifetime.ident == "async_trait";
+    }
+}
+
 pub struct AddLifetimeToImplTrait;
 
 impl VisitMut for AddLifetimeToImplTrait {
