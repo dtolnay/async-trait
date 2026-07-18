@@ -224,6 +224,7 @@
     clippy::if_not_else,
     clippy::items_after_statements,
     clippy::match_like_matches_macro,
+    clippy::match_same_arms,
     clippy::module_name_repetitions,
     clippy::needless_lifetimes,
     clippy::shadow_unrelated,
