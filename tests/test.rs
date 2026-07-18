@@ -10,6 +10,7 @@
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::missing_safety_doc,
+    clippy::mut_mut,
     clippy::needless_lifetimes,
     clippy::needless_return,
     clippy::non_minimal_cfg,
@@ -1724,6 +1725,25 @@ pub mod issue288 {
         async fn f<#[cfg(any())] T: Send>(#[cfg(any())] t: T) {}
         async fn g<#[cfg(all())] T: Send>(#[cfg(all())] t: T) {
             let _ = t;
+        }
+    }
+}
+
+// https://github.com/dtolnay/async-trait/issues/300
+pub mod issue300 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&mut self) -> ();
+    }
+
+    pub struct Thing;
+
+    #[async_trait]
+    impl Trait for Thing {
+        async fn f(&mut self) -> () {
+            let _ = &mut self;
         }
     }
 }

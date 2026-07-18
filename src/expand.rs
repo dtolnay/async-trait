@@ -359,11 +359,15 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
         .map(|(i, arg)| match arg {
             FnArg::Receiver(Receiver {
                 self_token,
-                mutability,
+                mut mutability,
+                kind,
                 ..
             }) => {
                 replace_self = true;
                 let ident = Ident::new("__self", self_token.span);
+                if let ReceiverKind::Reference(_ampersand, _lifetime, reference_mutability) = kind {
+                    mutability = *reference_mutability;
+                }
                 quote!(let #mutability #ident = #self_token;)
             }
             FnArg::Typed(arg) => {
