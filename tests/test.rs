@@ -1727,3 +1727,22 @@ pub mod issue288 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/300
+pub mod issue300 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&mut self) -> ();
+    }
+
+    pub struct Thing;
+
+    #[async_trait]
+    impl Trait for Thing {
+        async fn f(&mut self) -> () {
+            let _ = &mut self;
+        }
+    }
+}
