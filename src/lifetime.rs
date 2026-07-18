@@ -2,8 +2,8 @@ use proc_macro2::{Span, TokenStream};
 use std::mem;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, Receiver, ReturnType, Token, Type,
-    TypeBareFn, TypeImplTrait, TypeParen, TypePtr, TypeReference,
+    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, ReceiverKind, ReturnType, Token,
+    Type, TypeFnPtr, TypeImplTrait, TypeParen, TypePtr, TypeReference,
 };
 
 pub struct CollectLifetimes {
@@ -43,11 +43,16 @@ impl CollectLifetimes {
 }
 
 impl VisitMut for CollectLifetimes {
-    fn visit_receiver_mut(&mut self, arg: &mut Receiver) {
-        if let Some((reference, lifetime)) = &mut arg.reference {
-            self.visit_opt_lifetime(reference, lifetime);
-        } else {
-            visit_mut::visit_type_mut(self, &mut arg.ty);
+    fn visit_receiver_kind_mut(&mut self, receiver: &mut ReceiverKind) {
+        match receiver {
+            ReceiverKind::Value => {}
+            ReceiverKind::Reference(reference, lifetime, _mutability) => {
+                self.visit_opt_lifetime(reference, lifetime);
+            }
+            ReceiverKind::Typed(_colon, ty) => {
+                visit_mut::visit_type_mut(self, ty);
+            }
+            _ => {}
         }
     }
 
@@ -87,11 +92,11 @@ impl VisitMut for AddLifetimeToImplTrait {
         visit_mut::visit_type_ptr_mut(self, ty);
     }
 
-    fn visit_type_bare_fn_mut(&mut self, ty: &mut TypeBareFn) {
+    fn visit_type_fn_ptr_mut(&mut self, ty: &mut TypeFnPtr) {
         if let ReturnType::Type(arrow, return_type) = &mut ty.output {
             parenthesize_impl_trait(return_type, arrow.spans[0]);
         }
-        visit_mut::visit_type_bare_fn_mut(self, ty);
+        visit_mut::visit_type_fn_ptr_mut(self, ty);
     }
 
     fn visit_expr_mut(&mut self, _e: &mut Expr) {
@@ -105,6 +110,7 @@ fn parenthesize_impl_trait(elem: &mut Type, paren_span: Span) {
     if let Type::ImplTrait(_) = *elem {
         let placeholder = Type::Verbatim(TokenStream::new());
         *elem = Type::Paren(TypeParen {
+            attrs: Vec::new(),
             paren_token: token::Paren(paren_span),
             elem: Box::new(mem::replace(elem, placeholder)),
         });
