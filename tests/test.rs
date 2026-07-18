@@ -10,6 +10,7 @@
     clippy::let_unit_value,
     clippy::missing_panics_doc,
     clippy::missing_safety_doc,
+    clippy::mut_mut,
     clippy::needless_lifetimes,
     clippy::needless_return,
     clippy::non_minimal_cfg,
