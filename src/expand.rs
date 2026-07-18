@@ -1,5 +1,5 @@
 use crate::bound::{has_bound, InferredBound, Supertraits};
-use crate::lifetime::{AddLifetimeToImplTrait, CollectLifetimes};
+use crate::lifetime::{AddLifetimeToImplTrait, CollectLifetimes, NeedsAsyncTrait};
 use crate::parse::Item;
 use crate::receiver::{has_self_in_block, has_self_in_sig, mut_pat, ReplaceSelf};
 use crate::verbatim::VerbatimFn;
@@ -162,6 +162,20 @@ fn lint_suppress_without_body() -> Attribute {
 //         'life1: 'async_trait,
 //         T: 'async_trait,
 //         Self: Sync + 'async_trait;
+//
+// If the receiver is the only borrowed input and there are no generic
+// parameters, the future is tied to the receiver's lifetime instead and no
+// `'async_trait` is emitted. The `Self: 'async_trait` and `'lifeN:
+// 'async_trait` outlives bounds this avoids defeat the trait solver's global
+// `Send`/`Sync` cache (rust-lang/rust#157595).
+//
+// Input:
+//     async fn f(&self) -> Ret;
+//
+// Output:
+//     fn f<'life0>(
+//         &'life0 self,
+//     ) -> Pin<Box<dyn Future<Output = Ret> + Send + 'life0>>;
 fn transform_sig(
     context: Context,
     sig: &mut Signature,
@@ -183,6 +197,25 @@ fn transform_sig(
             FnArg::Typed(arg) => lifetimes.visit_type_mut(&mut arg.ty),
         }
     }
+
+    // Decided from the signature alone: the trait and its impls expand in
+    // separate macro invocations and must agree on whether `'life0` is
+    // late-bound (E0195).
+    let receiver_is_reference = sig.receiver().is_some_and(|receiver| {
+        receiver.reference.is_some() || matches!(*receiver.ty, Type::Reference(_))
+    });
+    let mut needs_async_trait = NeedsAsyncTrait(false);
+    needs_async_trait.visit_signature_mut(sig);
+    let receiver_lifetime = if receiver_is_reference
+        && sig.generics.params.is_empty()
+        && lifetimes.explicit.is_empty()
+        && lifetimes.elided.len() == 1
+        && !needs_async_trait.0
+    {
+        Some(lifetimes.elided[0].clone())
+    } else {
+        None
+    };
 
     for param in &mut sig.generics.params {
         match param {
@@ -237,12 +270,16 @@ fn transform_sig(
 
     for elided in lifetimes.elided {
         sig.generics.params.push(parse_quote!(#elided));
-        where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
+        if receiver_lifetime.is_none() {
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote_spanned!(elided.span()=> #elided: 'async_trait));
+        }
     }
 
-    sig.generics.params.push(parse_quote!('async_trait));
+    if receiver_lifetime.is_none() {
+        sig.generics.params.push(parse_quote!('async_trait));
+    }
 
     if has_self {
         let bounds: &[InferredBound] = if is_local {
@@ -285,16 +322,28 @@ fn transform_sig(
             &[InferredBound::Send]
         };
 
-        let bounds = bounds.iter().filter(|bound| match context {
-            Context::Trait { supertraits, .. } => has_default && !has_bound(supertraits, bound),
-            Context::Impl { .. } => false,
-        });
+        let bounds: Vec<&InferredBound> = bounds
+            .iter()
+            .filter(|bound| match context {
+                Context::Trait { supertraits, .. } => has_default && !has_bound(supertraits, bound),
+                Context::Impl { .. } => false,
+            })
+            .collect();
 
-        where_clause_or_default(&mut sig.generics.where_clause)
-            .predicates
-            .push(parse_quote! {
-                Self: #(#bounds +)* 'async_trait
-            });
+        if receiver_lifetime.is_none() {
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote! {
+                    Self: #(#bounds +)* 'async_trait
+                });
+        } else if !bounds.is_empty() {
+            // `Self: 'life0` is already implied by `&'life0 self`
+            where_clause_or_default(&mut sig.generics.where_clause)
+                .predicates
+                .push(parse_quote! {
+                    Self: #(#bounds)+*
+                });
+        }
     }
 
     for (i, arg) in sig.inputs.iter_mut().enumerate() {
@@ -321,10 +370,11 @@ fn transform_sig(
         }
     }
 
+    let lifetime = receiver_lifetime.unwrap_or_else(|| parse_quote!('async_trait));
     let bounds = if is_local {
-        quote!('async_trait)
+        quote!(#lifetime)
     } else {
-        quote!(::core::marker::Send + 'async_trait)
+        quote!(::core::marker::Send + #lifetime)
     };
     sig.output = parse_quote! {
         #ret_arrow ::core::pin::Pin<Box<

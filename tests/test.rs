@@ -1727,3 +1727,50 @@ pub mod issue288 {
         }
     }
 }
+
+// rust-lang/rust#157595: methods whose only borrowed input is the receiver
+// lower to a future tied to the receiver lifetime, with no `'async_trait` and
+// no outlives bounds. Pins the eligible forms.
+pub mod region_free_receiver_lifetime {
+    use crate::executor;
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Svc {
+        async fn ref_self(&self) -> u64;
+        async fn mut_self(&mut self) -> u64;
+        async fn ret_borrow(&self) -> &u64;
+        async fn owned_arg(&self, n: u64) -> u64;
+        async fn defaulted(&self) -> u64 {
+            1
+        }
+    }
+
+    pub struct S(u64);
+
+    #[async_trait]
+    impl Svc for S {
+        async fn ref_self(&self) -> u64 {
+            self.0
+        }
+        async fn mut_self(&mut self) -> u64 {
+            self.0
+        }
+        async fn ret_borrow(&self) -> &u64 {
+            &self.0
+        }
+        async fn owned_arg(&self, n: u64) -> u64 {
+            self.0 + n
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut s = S(40);
+        assert_eq!(executor::block_on_simple(s.ref_self()), 40);
+        assert_eq!(executor::block_on_simple(s.mut_self()), 40);
+        assert_eq!(*executor::block_on_simple(s.ret_borrow()), 40);
+        assert_eq!(executor::block_on_simple(s.owned_arg(2)), 42);
+        assert_eq!(executor::block_on_simple(s.defaulted()), 1);
+    }
+}

@@ -23,6 +23,44 @@ note: trait defined here, with 0 lifetime parameters
 22 | pub trait Trait2 {
    |           ^^^^^^
 
+error[E0195]: lifetime parameters do not match the trait definition
+  --> tests/ui/lifetime-span.rs:28:21
+   |
+28 |     async fn method(&self) {}
+   |                     ^
+   |
+   = note: lifetime parameters differ in whether they are early- or late-bound
+note: `'life0` differs between the trait and impl
+  --> tests/ui/lifetime-span.rs:23:21
+   |
+22 | pub trait Trait2 {
+   | ---------------- in this trait...
+23 |     async fn method<'r>(&'r self);
+   |                     ^^
+   |                     |
+   |                     `'r` is early-bound
+   |                     this lifetime bound makes `'r` early-bound
+...
+27 | impl Trait2 for A {
+   | ----------------- in this impl...
+28 |     async fn method(&self) {}
+   |                     ^ `'life0` is late-bound
+note: `'life0` differs between the trait and impl
+  --> tests/ui/lifetime-span.rs:21:1
+   |
+21 | #[async_trait]
+   | ^^^^^^^^^^^^^^ `'async_trait` is early-bound
+22 | pub trait Trait2 {
+   | ---------------- in this trait...
+23 |     async fn method<'r>(&'r self);
+   |                     -- this lifetime bound makes `'async_trait` early-bound
+...
+27 | impl Trait2 for A {
+   | ----------------- in this impl...
+28 |     async fn method(&self) {}
+   |                     ^ `'life0` is late-bound
+   = note: this error originates in the attribute macro `async_trait` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0195]: lifetime parameters or bounds on method `method` do not match the trait declaration
   --> tests/ui/lifetime-span.rs:33:14
    |
