@@ -66,7 +66,6 @@ pub fn expand(input: &mut Item, is_local: bool) {
                     if sig.asyncness.is_some() {
                         let block = &mut method.default;
                         let mut has_self = has_self_in_sig(sig);
-                        method.attrs.push(parse_quote!(#[must_use]));
                         if let Some(block) = block {
                             has_self |= has_self_in_block(block);
                             transform_block(context, sig, block);
