@@ -22,8 +22,12 @@ error: lifetime may not live long enough
    |                                      |
    |                                      lifetime `'life2` defined here
 
-help: the following changes may resolve your lifetime errors
-  |
-  = help: replace `'life0` with `'static`
-  = help: replace `'life1` with `'static`
-  = help: replace `'life2` with `'static`
+error: one or more lifetime errors were found in this item
+  --> tests/ui/lifetime-defined-here.rs:12:14
+   |
+12 |     async fn bar(&self, x: &str, y: &'_ str) -> &'static str {
+   |              ^^^
+   |
+   = help: replace `'life0` with `'static`
+   = help: replace `'life1` with `'static`
+   = help: replace `'life2` with `'static`
