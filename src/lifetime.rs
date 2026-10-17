@@ -10,6 +10,7 @@ pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
     reference_depth: usize,
+    impl_trait_depth: usize,
 }
 
 impl CollectLifetimes {
@@ -18,6 +19,7 @@ impl CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
             reference_depth: 0,
+            impl_trait_depth: 0,
         }
     }
 
@@ -70,11 +72,17 @@ impl VisitMut for CollectLifetimes {
             // A borrowed type's elided path lifetimes are independent of the
             // reference lifetime. Keep placeholders elided, just like omitted
             // path lifetimes; the borrow supplies their outlives requirement.
-            if lifetime.ident != "_" || self.reference_depth == 0 {
+            if lifetime.ident != "_" || self.reference_depth == 0 || self.impl_trait_depth > 0 {
                 self.visit_lifetime(lifetime);
             }
         }
         visit_mut::visit_generic_argument_mut(self, gen);
+    }
+
+    fn visit_type_impl_trait_mut(&mut self, ty: &mut TypeImplTrait) {
+        self.impl_trait_depth += 1;
+        visit_mut::visit_type_impl_trait_mut(self, ty);
+        self.impl_trait_depth -= 1;
     }
 }
 
