@@ -1854,19 +1854,19 @@ pub mod issue305 {
     pub struct Borrowed<'a>(pub &'a ());
 
     impl<'a> Bound<'a> for Borrowed<'a> {}
-    impl<'a> NestedBound<&Borrowed<'a>> for Borrowed<'a> {}
+    impl<'a> NestedBound<Option<Borrowed<'a>>> for Borrowed<'a> {}
 
     pub struct Struct;
 
     #[async_trait]
     pub trait Trait {
         async fn f(&self, value: &impl Bound<'_>);
-        async fn nested(&self, value: &impl NestedBound<&Borrowed<'_>>);
+        async fn nested(&self, value: &impl NestedBound<Option<Borrowed<'_>>>);
     }
 
     #[async_trait]
     impl Trait for Struct {
         async fn f(&self, _value: &impl Bound<'_>) {}
-        async fn nested(&self, _value: &impl NestedBound<&Borrowed<'_>>) {}
+        async fn nested(&self, _value: &impl NestedBound<Option<Borrowed<'_>>>) {}
     }
 }
