@@ -9,6 +9,7 @@ use syn::{
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
+    reference_depth: usize,
 }
 
 impl CollectLifetimes {
@@ -16,6 +17,7 @@ impl CollectLifetimes {
         CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
+            reference_depth: 0,
         }
     }
 
@@ -58,12 +60,19 @@ impl VisitMut for CollectLifetimes {
 
     fn visit_type_reference_mut(&mut self, ty: &mut TypeReference) {
         self.visit_opt_lifetime(&ty.and_token, &mut ty.lifetime);
-        visit_mut::visit_type_reference_mut(self, ty);
+        self.reference_depth += 1;
+        self.visit_type_mut(&mut ty.elem);
+        self.reference_depth -= 1;
     }
 
     fn visit_generic_argument_mut(&mut self, gen: &mut GenericArgument) {
         if let GenericArgument::Lifetime(lifetime) = gen {
-            self.visit_lifetime(lifetime);
+            // A borrowed type's elided path lifetimes are independent of the
+            // reference lifetime. Keep placeholders elided, just like omitted
+            // path lifetimes; the borrow supplies their outlives requirement.
+            if lifetime.ident != "_" || self.reference_depth == 0 {
+                self.visit_lifetime(lifetime);
+            }
         }
         visit_mut::visit_generic_argument_mut(self, gen);
     }

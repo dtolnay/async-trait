@@ -122,6 +122,7 @@ struct ElidedInput;
 #[async_trait]
 impl BorrowedInput for ElidedInput {
     async fn consume(&self, value: &Borrowed) {
+        std::future::ready(()).await;
         let _ = value.0;
     }
 }
@@ -131,6 +132,7 @@ struct ExplicitInput;
 #[async_trait]
 impl BorrowedInput for ExplicitInput {
     async fn consume(&self, value: &Borrowed<'_>) {
+        std::future::ready(()).await;
         let _ = value.0;
     }
 }
@@ -140,6 +142,69 @@ pub async fn test_elided_and_explicit_input_lifetimes() {
     let value = Borrowed(&data);
     ElidedInput.consume(&value).await;
     ExplicitInput.consume(&value).await;
+}
+
+struct InvariantBorrowed<'a>(&'a mut ());
+
+#[async_trait]
+trait BorrowedInputContexts {
+    async fn invariant(&self, value: &mut InvariantBorrowed);
+    async fn nested(&self, value: &&Borrowed);
+    async fn wrapped(&self, value: &Option<Borrowed>);
+    async fn callback(&self, value: &fn(Borrowed));
+    async fn higher_ranked(&self, value: &for<'a> fn(&'a Borrowed));
+    async fn owned(&self, value: Borrowed<'_>);
+}
+
+#[async_trait]
+impl BorrowedInputContexts for ExplicitInput {
+    async fn invariant(&self, value: &mut InvariantBorrowed<'_>) {
+        std::future::ready(()).await;
+        *value.0 = ();
+    }
+
+    async fn nested(&self, value: &&Borrowed<'_>) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+
+    async fn wrapped(&self, value: &Option<Borrowed<'_>>) {
+        std::future::ready(()).await;
+        let _ = value.as_ref().map(|borrowed| borrowed.0);
+    }
+
+    async fn callback(&self, value: &fn(Borrowed<'_>)) {
+        std::future::ready(()).await;
+        value(Borrowed(&()));
+    }
+
+    async fn higher_ranked(&self, value: &for<'a> fn(&'a Borrowed<'_>)) {
+        std::future::ready(()).await;
+        value(&Borrowed(&()));
+    }
+
+    async fn owned(&self, value: Borrowed<'_>) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+}
+
+pub async fn test_borrowed_input_contexts() {
+    let mut data = ();
+    let mut invariant = InvariantBorrowed(&mut data);
+    ExplicitInput.invariant(&mut invariant).await;
+    // The short mutable borrow must not be tied to the inner lifetime.
+    ExplicitInput.invariant(&mut invariant).await;
+
+    let data = ();
+    let borrowed = Borrowed(&data);
+    ExplicitInput.nested(&&borrowed).await;
+    ExplicitInput.wrapped(&Some(Borrowed(&data))).await;
+    let callback: fn(Borrowed<'_>) = |_| {};
+    ExplicitInput.callback(&callback).await;
+    let higher_ranked: for<'a> fn(&'a Borrowed<'_>) = |_| {};
+    ExplicitInput.higher_ranked(&higher_ranked).await;
+    ExplicitInput.owned(Borrowed(&data)).await;
 }
 
 pub async fn test_dyn_compatible_without_default() {
