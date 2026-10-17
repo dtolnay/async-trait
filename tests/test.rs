@@ -110,6 +110,38 @@ pub async fn test() {
     s.calls_mut().await;
 }
 
+struct Borrowed<'a>(&'a ());
+
+#[async_trait]
+trait BorrowedInput {
+    async fn consume(&self, value: &Borrowed);
+}
+
+struct ElidedInput;
+
+#[async_trait]
+impl BorrowedInput for ElidedInput {
+    async fn consume(&self, value: &Borrowed) {
+        let _ = value.0;
+    }
+}
+
+struct ExplicitInput;
+
+#[async_trait]
+impl BorrowedInput for ExplicitInput {
+    async fn consume(&self, value: &Borrowed<'_>) {
+        let _ = value.0;
+    }
+}
+
+pub async fn test_elided_and_explicit_input_lifetimes() {
+    let data = ();
+    let value = Borrowed(&data);
+    ElidedInput.consume(&value).await;
+    ExplicitInput.consume(&value).await;
+}
+
 pub async fn test_dyn_compatible_without_default() {
     #[async_trait]
     trait DynCompatible {
