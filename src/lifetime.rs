@@ -2,13 +2,16 @@ use proc_macro2::{Span, TokenStream};
 use std::mem;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, ReceiverKind, ReturnType, Token,
-    Type, TypeFnPtr, TypeImplTrait, TypeParen, TypePtr, TypeReference,
+    parse_quote_spanned, token, Expr, GenericArgument, Lifetime, ParenthesizedGenericArguments,
+    ReceiverKind, ReturnType, Token, Type, TypeFnPtr, TypeImplTrait, TypeParen, TypePtr,
+    TypeReference,
 };
 
 pub struct CollectLifetimes {
     pub elided: Vec<Lifetime>,
     pub explicit: Vec<Lifetime>,
+    // Inside fn(..) or Fn(..), elided lifetimes are higher-ranked.
+    in_fn_sugar: usize,
 }
 
 impl CollectLifetimes {
@@ -16,11 +19,13 @@ impl CollectLifetimes {
         CollectLifetimes {
             elided: Vec::new(),
             explicit: Vec::new(),
+            in_fn_sugar: 0,
         }
     }
 
     fn visit_opt_lifetime(&mut self, reference: &Token![&], lifetime: &mut Option<Lifetime>) {
         match lifetime {
+            None if self.in_fn_sugar > 0 => {}
             None => *lifetime = Some(self.next_lifetime(reference.span)),
             Some(lifetime) => self.visit_lifetime(lifetime),
         }
@@ -28,7 +33,9 @@ impl CollectLifetimes {
 
     fn visit_lifetime(&mut self, lifetime: &mut Lifetime) {
         if lifetime.ident == "_" {
-            *lifetime = self.next_lifetime(lifetime.span());
+            if self.in_fn_sugar == 0 {
+                *lifetime = self.next_lifetime(lifetime.span());
+            }
         } else {
             self.explicit.push(lifetime.clone());
         }
@@ -66,6 +73,21 @@ impl VisitMut for CollectLifetimes {
             self.visit_lifetime(lifetime);
         }
         visit_mut::visit_generic_argument_mut(self, gen);
+    }
+
+    fn visit_type_fn_ptr_mut(&mut self, ty: &mut TypeFnPtr) {
+        self.in_fn_sugar += 1;
+        visit_mut::visit_type_fn_ptr_mut(self, ty);
+        self.in_fn_sugar -= 1;
+    }
+
+    fn visit_parenthesized_generic_arguments_mut(
+        &mut self,
+        args: &mut ParenthesizedGenericArguments,
+    ) {
+        self.in_fn_sugar += 1;
+        visit_mut::visit_parenthesized_generic_arguments_mut(self, args);
+        self.in_fn_sugar -= 1;
     }
 }
 

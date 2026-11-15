@@ -1747,3 +1747,39 @@ pub mod issue300 {
         }
     }
 }
+
+// https://github.com/dtolnay/async-trait/issues/257
+pub mod issue257 {
+    use async_trait::async_trait;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn fn_ptr(&self, f: fn(&String) -> bool) -> bool;
+        async fn dyn_fn(&self, f: &(dyn Fn(&String) -> bool + Sync)) -> bool;
+        async fn impl_fn(&self, f: impl Fn(&String) -> bool + Send) -> bool;
+    }
+
+    pub struct Struct;
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn fn_ptr(&self, f: fn(&String) -> bool) -> bool {
+            let s = String::new();
+            f(&s)
+        }
+
+        async fn dyn_fn(&self, f: &(dyn Fn(&String) -> bool + Sync)) -> bool {
+            let s = String::new();
+            f(&s)
+        }
+
+        async fn impl_fn(&self, f: impl Fn(&String) -> bool + Send) -> bool {
+            let s = String::new();
+            f(&s)
+        }
+    }
+
+    pub async fn call(s: &Struct) -> bool {
+        s.dyn_fn(&|a| a == "a").await
+    }
+}
