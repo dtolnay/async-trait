@@ -110,6 +110,103 @@ pub async fn test() {
     s.calls_mut().await;
 }
 
+struct Borrowed<'a>(&'a ());
+
+#[async_trait]
+trait BorrowedInput {
+    async fn consume(&self, value: &Borrowed);
+}
+
+struct ElidedInput;
+
+#[async_trait]
+impl BorrowedInput for ElidedInput {
+    async fn consume(&self, value: &Borrowed) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+}
+
+struct ExplicitInput;
+
+#[async_trait]
+impl BorrowedInput for ExplicitInput {
+    async fn consume(&self, value: &Borrowed<'_>) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+}
+
+pub async fn test_elided_and_explicit_input_lifetimes() {
+    let data = ();
+    let value = Borrowed(&data);
+    ElidedInput.consume(&value).await;
+    ExplicitInput.consume(&value).await;
+}
+
+struct InvariantBorrowed<'a>(&'a mut ());
+
+#[async_trait]
+trait BorrowedInputContexts {
+    async fn invariant(&self, value: &mut InvariantBorrowed);
+    async fn nested(&self, value: &&Borrowed);
+    async fn wrapped(&self, value: &Option<Borrowed>);
+    async fn callback(&self, value: &fn(Borrowed));
+    async fn higher_ranked(&self, value: &for<'a> fn(&'a Borrowed));
+    async fn owned(&self, value: Borrowed<'_>);
+}
+
+#[async_trait]
+impl BorrowedInputContexts for ExplicitInput {
+    async fn invariant(&self, value: &mut InvariantBorrowed<'_>) {
+        std::future::ready(()).await;
+        *value.0 = ();
+    }
+
+    async fn nested(&self, value: &&Borrowed<'_>) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+
+    async fn wrapped(&self, value: &Option<Borrowed<'_>>) {
+        std::future::ready(()).await;
+        let _ = value.as_ref().map(|borrowed| borrowed.0);
+    }
+
+    async fn callback(&self, value: &fn(Borrowed<'_>)) {
+        std::future::ready(()).await;
+        value(Borrowed(&()));
+    }
+
+    async fn higher_ranked(&self, value: &for<'a> fn(&'a Borrowed<'_>)) {
+        std::future::ready(()).await;
+        value(&Borrowed(&()));
+    }
+
+    async fn owned(&self, value: Borrowed<'_>) {
+        std::future::ready(()).await;
+        let _ = value.0;
+    }
+}
+
+pub async fn test_borrowed_input_contexts() {
+    let mut data = ();
+    let mut invariant = InvariantBorrowed(&mut data);
+    ExplicitInput.invariant(&mut invariant).await;
+    // The short mutable borrow must not be tied to the inner lifetime.
+    ExplicitInput.invariant(&mut invariant).await;
+
+    let data = ();
+    let borrowed = Borrowed(&data);
+    ExplicitInput.nested(&&borrowed).await;
+    ExplicitInput.wrapped(&Some(Borrowed(&data))).await;
+    let callback: fn(Borrowed<'_>) = |_| {};
+    ExplicitInput.callback(&callback).await;
+    let higher_ranked: for<'a> fn(&'a Borrowed<'_>) = |_| {};
+    ExplicitInput.higher_ranked(&higher_ranked).await;
+    ExplicitInput.owned(Borrowed(&data)).await;
+}
+
 pub async fn test_dyn_compatible_without_default() {
     #[async_trait]
     trait DynCompatible {
@@ -1745,5 +1842,31 @@ pub mod issue300 {
         async fn f(&mut self) -> () {
             let _ = &mut self;
         }
+    }
+}
+
+pub mod issue305 {
+    use async_trait::async_trait;
+
+    pub trait Bound<'a> {}
+    pub trait NestedBound<T> {}
+
+    pub struct Borrowed<'a>(pub &'a ());
+
+    impl<'a> Bound<'a> for Borrowed<'a> {}
+    impl<'a> NestedBound<Option<Borrowed<'a>>> for Borrowed<'a> {}
+
+    pub struct Struct;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn f(&self, value: &impl Bound<'_>);
+        async fn nested(&self, value: &impl NestedBound<Option<Borrowed<'_>>>);
+    }
+
+    #[async_trait]
+    impl Trait for Struct {
+        async fn f(&self, _value: &impl Bound<'_>) {}
+        async fn nested(&self, _value: &impl NestedBound<Option<Borrowed<'_>>>) {}
     }
 }
