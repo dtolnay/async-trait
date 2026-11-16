@@ -10,9 +10,10 @@ use std::mem;
 use syn::punctuated::Punctuated;
 use syn::visit_mut::{self, VisitMut};
 use syn::{
-    parse_quote, parse_quote_spanned, Attribute, Block, FnArg, GenericArgument, GenericParam,
+    parse_quote, parse_quote_spanned, Attribute, Block, Expr, FnArg, GenericArgument, GenericParam,
     Generics, Ident, ImplItem, Lifetime, LifetimeParam, Pat, PatIdent, PathArguments, Receiver,
-    ReceiverKind, ReturnType, Signature, Token, TraitItem, Type, TypeInfer, TypePath, WhereClause,
+    ReceiverKind, ReturnType, Signature, Stmt, Token, TraitItem, Type, TypeInfer, TypePath,
+    WhereClause,
 };
 
 impl ToTokens for Item {
@@ -444,7 +445,8 @@ fn transform_block(context: Context, sig: &mut Signature, block: &mut Block) {
     let box_pin = quote_spanned!(sig.asyncness.unwrap().span=>
         Box::pin(async move { #let_ret })
     );
-    block.stmts = parse_quote!(#box_pin);
+    // Verbatim avoids parsing the whole method body a second time.
+    block.stmts = vec![Stmt::Expr(Expr::Verbatim(box_pin), None)];
 }
 
 fn positional_arg(i: usize, pat: &Pat) -> Ident {
