@@ -252,32 +252,7 @@ fn transform_sig(
                 ReceiverKind::Reference(_ampersand, _lifetime, None::<Token![mut]>) => {
                     &[InferredBound::Sync]
                 }
-                ReceiverKind::Typed(_colon, ty) => match ty.as_ref() {
-                    // self: &Self
-                    Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
-                    // self: Arc<Self>
-                    Type::Path(ty)
-                        if {
-                            let segment = ty.path.segments.last().unwrap();
-                            segment.ident == "Arc"
-                                && match &segment.arguments {
-                                    PathArguments::AngleBracketed(arguments) => {
-                                        arguments.args.len() == 1
-                                            && match &arguments.args[0] {
-                                                GenericArgument::Type(Type::Path(arg)) => {
-                                                    arg.path.is_ident("Self")
-                                                }
-                                                _ => false,
-                                            }
-                                    }
-                                    _ => false,
-                                }
-                        } =>
-                    {
-                        &[InferredBound::Sync, InferredBound::Send]
-                    }
-                    _ => &[InferredBound::Send],
-                },
+                ReceiverKind::Typed(_colon, ty) => typed_receiver_bounds(ty),
                 _ => &[InferredBound::Send],
             }
         } else {
@@ -330,6 +305,35 @@ fn transform_sig(
             dyn ::core::future::Future<Output = #ret> + #bounds
         >>
     };
+}
+
+fn typed_receiver_bounds(ty: &Type) -> &'static [InferredBound] {
+    match ty {
+        // self: &Self
+        Type::Reference(ty) if ty.mutability.is_none() => &[InferredBound::Sync],
+        Type::Path(ty) => {
+            let segment = ty.path.segments.last().unwrap();
+            let arg = match &segment.arguments {
+                PathArguments::AngleBracketed(arguments) if arguments.args.len() == 1 => {
+                    match &arguments.args[0] {
+                        GenericArgument::Type(arg) => Some(arg),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
+            match arg {
+                // self: Arc<Self>
+                Some(Type::Path(arg)) if segment.ident == "Arc" && arg.path.is_ident("Self") => {
+                    &[InferredBound::Sync, InferredBound::Send]
+                }
+                // self: Pin<&Self>, self: Pin<Arc<Self>>
+                Some(arg) if segment.ident == "Pin" => typed_receiver_bounds(arg),
+                _ => &[InferredBound::Send],
+            }
+        }
+        _ => &[InferredBound::Send],
+    }
 }
 
 // Input:

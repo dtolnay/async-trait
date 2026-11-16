@@ -1484,6 +1484,19 @@ pub mod issue210 {
     }
 }
 
+pub mod pin_receiver {
+    use async_trait::async_trait;
+    use std::pin::Pin;
+    use std::sync::Arc;
+
+    #[async_trait]
+    pub trait Trait {
+        async fn by_ref(self: Pin<&Self>) {}
+        async fn by_mut(self: Pin<&mut Self>) {}
+        async fn by_arc(self: Pin<Arc<Self>>) {}
+    }
+}
+
 // https://github.com/dtolnay/async-trait/issues/226
 pub mod issue226 {
     use async_trait::async_trait;
