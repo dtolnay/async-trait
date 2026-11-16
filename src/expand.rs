@@ -171,8 +171,8 @@ fn transform_sig(
     sig.fn_token.span = sig.asyncness.take().unwrap().span;
 
     let (ret_arrow, ret) = match &sig.output {
-        ReturnType::Default => (quote!(->), quote!(())),
-        ReturnType::Type(arrow, ret) => (quote!(#arrow), quote!(#ret)),
+        ReturnType::Default => (Token![->](Span::call_site()), quote!(())),
+        ReturnType::Type(arrow, ret) => (*arrow, quote!(#ret)),
     };
 
     let mut lifetimes = CollectLifetimes::new();
@@ -325,11 +325,14 @@ fn transform_sig(
     } else {
         quote!(::core::marker::Send + 'async_trait)
     };
-    sig.output = parse_quote! {
-        #ret_arrow ::core::pin::Pin<Box<
-            dyn ::core::future::Future<Output = #ret> + #bounds
-        >>
-    };
+    sig.output = ReturnType::Type(
+        ret_arrow,
+        Box::new(Type::Verbatim(quote! {
+            ::core::pin::Pin<Box<
+                dyn ::core::future::Future<Output = #ret> + #bounds
+            >>
+        })),
+    );
 }
 
 // Input:
